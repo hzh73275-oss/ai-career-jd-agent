@@ -35,6 +35,16 @@ const fallbackJobs = [
   },
 ];
 
+const manualSearchPlatforms = [
+  { name: "Boss 直聘", url: "https://www.zhipin.com/web/geek/job?query=" },
+  { name: "实习僧", url: "https://www.shixiseng.com/interns?keyword=" },
+  { name: "牛客", url: "https://www.nowcoder.com/jobs/recommend?query=" },
+  { name: "智联招聘", url: "https://sou.zhaopin.com/?kw=" },
+  { name: "前程无忧", url: "https://we.51job.com/pc/search?keyword=" },
+  { name: "拉勾", url: "https://www.lagou.com/wn/jobs?kd=" },
+  { name: "公司官网/百度", url: "https://www.baidu.com/s?wd=" },
+];
+
 const emptyReport = {
   level: "-",
   score: "-",
@@ -83,6 +93,7 @@ const app = {
       page: "dashboard",
       apiOnline: false,
       apiMessage: "正在连接本地 API...",
+      apiChecking: false,
       hasTavilyKey: false,
       hasOpenaiKey: false,
 
@@ -99,6 +110,9 @@ const app = {
       sourceStats: {},
       platformNotices: [],
       searchStrategy: "",
+      searchFallbackActive: false,
+      searchFallbackReason: "",
+      manualJdText: "",
       activeTier: "冲刺岗",
       pageSize: 5,
       tierPages: {
@@ -138,7 +152,17 @@ const app = {
       error: "",
     });
 
-    const shownJobs = computed(() => (state.jobs.length ? state.jobs : fallbackJobs));
+    const shownJobs = computed(() => state.jobs);
+
+    const showNoKeyGuide = computed(() => !state.hasTavilyKey || state.searchFallbackActive);
+
+    const manualSearchLinks = computed(() => {
+      const keyword = encodeURIComponent(`${state.query || ""} ${state.cities || ""} 招聘 实习`.trim());
+      return manualSearchPlatforms.map((platform) => ({
+        name: platform.name,
+        url: `${platform.url}${keyword}`,
+      }));
+    });
 
     const metrics = computed(() => ({
       score: state.reportReady ? state.report.score : "-",
@@ -157,10 +181,7 @@ const app = {
 
     const currentJobs = computed(() => {
       const results = shownJobs.value.filter((job) => job.tier === state.activeTier);
-      if (state.jobs.length) {
-        return results;
-      }
-      return results.length ? results : shownJobs.value;
+      return results;
     });
 
     const currentTierPage = computed(() => state.tierPages[state.activeTier] || 1);
@@ -187,7 +208,7 @@ const app = {
       return pages;
     });
 
-    const selectedJobView = computed(() => state.selectedJob || shownJobs.value[0]);
+    const selectedJobView = computed(() => state.selectedJob);
 
     const searchModeHelp = computed(() => {
       if (state.searchMode === "深度搜索") {
@@ -210,6 +231,11 @@ const app = {
     const apiStatusText = computed(() => state.apiOnline ? "本地 API：已连接" : "本地 API：未连接");
     const searchKeyStatusText = computed(() => state.hasTavilyKey ? "联网搜索：已配置" : "联网搜索：未配置");
     const polishKeyStatusText = computed(() => state.hasOpenaiKey ? "大模型润色：已配置" : "大模型润色：未配置");
+    const apiCheckButtonText = computed(() => {
+      if (state.apiChecking) return "检查中...";
+      if (!state.apiOnline) return "检查接口";
+      return state.hasTavilyKey ? "接口正常" : "无 Key 模式";
+    });
 
     const setPage = (page) => {
       state.page = page;
@@ -246,15 +272,26 @@ const app = {
     };
 
     const checkApi = async () => {
+      state.apiChecking = true;
       try {
         const data = await apiGet("/api/health");
         state.apiOnline = true;
         state.hasTavilyKey = data.has_tavily_key;
         state.hasOpenaiKey = data.has_openai_key;
         state.apiMessage = "本地 API 已连接";
+        state.searchFallbackActive = !data.has_tavily_key;
+        state.searchFallbackReason = data.has_tavily_key
+          ? ""
+          : "未配置 Tavily Key。你可以直接粘贴 JD 做本地分析，或点击下方平台入口手动搜索岗位。";
+        setNotice(data.has_tavily_key
+          ? "接口已连接，联网搜索 Key 已配置。"
+          : "接口已连接；当前未配置 Tavily Key，已显示无 Key 使用入口。");
       } catch (error) {
         state.apiOnline = false;
         state.apiMessage = "本地 API 未启动，当前只显示示例数据";
+        setError("本地 API 未连接。请先运行 python run_app.py，再点击检查接口。");
+      } finally {
+        state.apiChecking = false;
       }
     };
 
@@ -294,7 +331,9 @@ const app = {
 
     const searchJobs = async () => {
       if (!state.hasTavilyKey) {
-        setError("联网搜索需要配置 Tavily 免费 API Key。项目不会使用作者 Key；你也可以先粘贴 JD 做本地分析。");
+        state.searchFallbackActive = true;
+        state.searchFallbackReason = "未配置 Tavily Key。你可以直接粘贴 JD 做本地分析，或点击下方平台入口手动搜索岗位。";
+        setNotice("已切换到无 Key 使用方式：手动搜索岗位或粘贴 JD 分析。");
         return;
       }
       state.searchLoading = true;
@@ -309,14 +348,53 @@ const app = {
         state.sourceStats = data.source_stats || {};
         state.platformNotices = data.platform_notices || [];
         state.searchStrategy = data.strategy || "";
+        state.searchFallbackActive = !state.jobs.length;
+        state.searchFallbackReason = state.jobs.length
+          ? ""
+          : "这次没有搜索到真实岗位。招聘平台经常需要登录或不被搜索引擎收录，你可以改关键词、点击平台入口手动搜索，或直接粘贴 JD 分析。";
         state.selectedJob = state.jobs[0] || null;
         state.activeTier = tierNames.find((tier) => state.jobs.some((job) => job.tier === tier)) || "冲刺岗";
         resetTierPages();
-        setNotice(`搜索到 ${data.count} 个候选岗位，覆盖 ${Object.keys(state.sourceStats).length} 个来源。`);
+        setNotice(state.jobs.length
+          ? `搜索到 ${data.count} 个候选岗位，覆盖 ${Object.keys(state.sourceStats).length} 个来源。`
+          : "没有搜到真实岗位，已显示无 Key/手动搜索入口。");
       } catch (error) {
-        setError(`岗位搜索失败：${error.message}`);
+        state.jobs = [];
+        state.selectedJob = null;
+        state.searchFallbackActive = true;
+        state.searchFallbackReason = error.message || "联网搜索不可用。你可以使用平台入口手动搜索，或直接粘贴 JD 做本地分析。";
+        setNotice("联网搜索暂不可用，已切换到手动搜索和粘贴 JD 分析入口。");
       } finally {
         state.searchLoading = false;
+      }
+    };
+
+    const analyzeManualJd = async () => {
+      const text = state.manualJdText.trim();
+      if (!text) {
+        setError("请先粘贴岗位 JD，再提取岗位信息。");
+        return;
+      }
+      state.jobLoading = true;
+      try {
+        const data = await apiPost("/api/job", { input_text: text });
+        state.selectedJob = {
+          index: 0,
+          title: data.job?.title || "手动粘贴 JD",
+          url: "",
+          summary: text.slice(0, 220),
+          source: "手动粘贴",
+          tier: "主投岗",
+          tier_reason: "用户手动粘贴的岗位描述。",
+        };
+        state.jobInfo = data.job;
+        state.jobText = data.job_text;
+        state.page = "detail";
+        setNotice("手动 JD 已提取，可以继续生成匹配报告。");
+      } catch (error) {
+        setError(`手动 JD 提取失败：${error.message}`);
+      } finally {
+        state.jobLoading = false;
       }
     };
 
@@ -421,6 +499,8 @@ const app = {
       metrics,
       tierCounts,
       currentJobs,
+      showNoKeyGuide,
+      manualSearchLinks,
       currentTierPage,
       totalJobPages,
       pagedJobs,
@@ -431,6 +511,7 @@ const app = {
       apiStatusText,
       searchKeyStatusText,
       polishKeyStatusText,
+      apiCheckButtonText,
       setPage,
       setActiveTier,
       setTierPage,
@@ -439,6 +520,7 @@ const app = {
       loadResumeByText,
       handleResumeFile,
       searchJobs,
+      analyzeManualJd,
       selectJob,
       extractJob,
       generateMatch,
@@ -498,7 +580,7 @@ const app = {
                 <span class="top-status" :class="{ok: state.hasTavilyKey}">{{ searchKeyStatusText }}</span>
                 <span class="top-status" :class="{ok: state.hasOpenaiKey}">{{ polishKeyStatusText }}</span>
               </div>
-              <button class="top-link" @click="checkApi">检查接口</button>
+              <button class="top-link" @click="checkApi" :disabled="state.apiChecking">{{ apiCheckButtonText }}</button>
               <span class="avatar">人</span>
             </div>
           </header>
@@ -509,8 +591,8 @@ const app = {
           <section v-if="state.page === 'dashboard'" class="page">
             <div class="page-head">
               <div>
-                <h1 class="page-title">你好，胡梓涵</h1>
-                <div class="page-subtitle">今天是优化简历、冲刺理想实习的第 1 天</div>
+                <h1 class="page-title">欢迎使用 AI 求职决策工作台</h1>
+                <div class="page-subtitle">上传简历、粘贴 JD 或搜索岗位，生成匹配分析和简历优化建议。</div>
               </div>
             </div>
 
@@ -638,16 +720,34 @@ const app = {
                 <div class="search-wait-note" :class="{active: state.searchLoading}">
                   {{ searchWaitingText }}
                 </div>
-                <div v-if="!state.hasTavilyKey" class="key-guide-card">
-                  <div class="key-guide-title">如何开启联网搜索</div>
-                  <ol>
-                    <li>打开 Tavily 官网注册免费账号。</li>
-                    <li>复制你自己的 API Key。</li>
-                    <li>复制 <code>.env.example</code> 为 <code>.env</code>，填入 <code>TAVILY_API_KEY=你的Key</code>。</li>
-                    <li>重启本地 API 后再搜索。</li>
-                  </ol>
-                  <div class="key-guide-note">这是你自己的免费额度，不会使用作者账号；未配置时也可以粘贴 JD 做本地分析。</div>
-                  <a class="key-guide-link" href="https://app.tavily.com" target="_blank">打开 Tavily</a>
+                <div v-if="showNoKeyGuide" class="key-guide-card">
+                  <div class="key-guide-title">无 Key 也可以继续使用</div>
+                  <div class="key-guide-note">
+                    {{ state.searchFallbackReason || "没有 Tavily Key？没关系。你可以先去招聘平台手动搜索岗位，再把 JD 粘贴到这里做本地分析。" }}
+                  </div>
+                  <div class="platform-link-grid">
+                    <a
+                      v-for="platform in manualSearchLinks"
+                      :key="platform.name"
+                      class="platform-link"
+                      :href="platform.url"
+                      target="_blank"
+                    >
+                      {{ platform.name }}
+                    </a>
+                  </div>
+                  <div class="field manual-jd-field">
+                    <label>粘贴 JD 做本地分析</label>
+                    <textarea
+                      class="textarea"
+                      v-model="state.manualJdText"
+                      placeholder="把招聘网站复制来的岗位描述粘贴到这里，不配置 Tavily Key 也能提取 JD、匹配简历。"
+                    ></textarea>
+                  </div>
+                  <button class="btn primary full" @click="analyzeManualJd" :disabled="state.jobLoading">
+                    {{ state.jobLoading ? "提取中..." : "提取手动 JD" }}
+                  </button>
+                  <a class="key-guide-link" href="https://app.tavily.com" target="_blank">想开启自动搜索？去 Tavily 获取自己的 Key</a>
                 </div>
                 <button class="btn primary full" @click="searchJobs" :disabled="state.searchLoading">
                   {{ state.searchLoading ? "跨平台搜索中..." : "搜索岗位" }}
@@ -659,7 +759,7 @@ const app = {
                 <div class="page-head" style="margin-bottom:12px;">
                   <div>
                     <h1 class="page-title">岗位列表</h1>
-                    <div class="page-subtitle">{{ state.jobs.length ? '共 ' + state.jobs.length + ' 个真实候选岗位' : '当前显示示例岗位，搜索后会替换为真实结果' }}</div>
+                <div class="page-subtitle">{{ state.jobs.length ? '共 ' + state.jobs.length + ' 个候选岗位' : '还没有岗位结果。请先搜索岗位，或粘贴 JD 做本地分析。' }}</div>
                   </div>
                 </div>
                 <div v-if="state.jobs.length" class="source-panel">
@@ -695,7 +795,7 @@ const app = {
                   </div>
 
                   <div class="job-list-scroll">
-                    <div v-if="!pagedJobs.length" class="empty">当前层级暂无岗位，可以切换到其他层级查看。</div>
+                    <div v-if="!pagedJobs.length" class="empty">还没有岗位结果。请先点击“搜索岗位”；如果没有 Key 或搜不到结果，可以使用左侧平台入口手动搜索，并粘贴 JD 做本地分析。</div>
                     <div
                       v-for="job in pagedJobs"
                       :key="job.index + job.title"

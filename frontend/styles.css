@@ -55,7 +55,7 @@ button {
 .app-frame {
   display: grid;
   grid-template-columns: 190px minmax(0, 1fr);
-  min-height: calc(100vh - 36px);
+  height: calc(100vh - 36px);
   max-width: 1500px;
   margin: 0 auto;
   background: rgba(255, 255, 255, 0.42);
@@ -73,6 +73,8 @@ button {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .side-logo {
@@ -166,7 +168,10 @@ button {
 
 .main {
   min-width: 0;
+  min-height: 0;
   padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .topbar {
@@ -296,8 +301,6 @@ button {
   grid-template-columns: 230px minmax(0, 1fr) 260px;
   gap: 14px;
   align-items: start;
-  max-height: calc(100vh - 92px);
-  overflow: hidden;
 }
 
 .layout-search > .card,
@@ -418,9 +421,46 @@ button {
 }
 
 .key-guide-link {
+  display: inline-flex;
+  margin-top: 9px;
   color: var(--primary);
   font-weight: 850;
   text-decoration: none;
+}
+
+.platform-link-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 9px 0 12px;
+}
+
+.platform-link {
+  min-height: 32px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: white;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  text-decoration: none;
+  font-weight: 850;
+}
+
+.platform-link:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.manual-jd-field {
+  margin-top: 12px;
+}
+
+.manual-jd-field .textarea {
+  min-height: 150px;
 }
 
 .progress-card {

@@ -430,6 +430,10 @@ def search_public_jobs(
           item["_source_group"] = group_name
           item["_source_target"] = target_key
           raw_results.append(item)
+      except httpx.HTTPStatusError as exc:
+        status_code = exc.response.status_code
+        if status_code in {401, 403}:
+          raise RuntimeError("Tavily API Key 无效或无权限。你仍然可以粘贴 JD 做本地分析，或使用下方平台链接手动搜索岗位。") from exc
       except Exception:
         continue
 

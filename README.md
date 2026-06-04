@@ -71,6 +71,22 @@ TAVILY_API_KEY=
 
 不配置 API Key 时，应用仍然可以进行本地简历/JD 分析。岗位搜索需要 `TAVILY_API_KEY`，大模型润色需要 `OPENAI_API_KEY`。
 
+### 无 Key 模式
+
+本项目支持无 Key 使用。不开通 Tavily / OpenAI Key 时，仍然可以完成核心流程：
+
+- 手动去 Boss 直聘、实习僧、牛客、智联招聘、前程无忧、拉勾或公司官网搜索岗位。
+- 复制岗位 JD，粘贴到项目的“岗位搜索”页面。
+- 点击“提取手动 JD”，生成结构化岗位信息。
+- 上传或粘贴自己的简历。
+- 继续生成简历与 JD 的匹配分析、逐项对照表和简历优化建议。
+
+无 Key 模式下不可自动联网搜索岗位，但不影响本地 JD 分析、简历匹配和规则版简历优化建议。
+
+如果需要自动搜索公开岗位，可以配置自己的 `TAVILY_API_KEY`。Tavily 通常提供免费额度，但额度有限，深度搜索和多平台搜索会消耗更多 credits。
+
+如果需要大模型润色，可以配置自己的 `OPENAI_API_KEY`、`OPENAI_BASE_URL` 和 `MODEL_NAME`。未配置时，项目会使用规则版简历优化建议。
+
 ### 本地运行
 
 启动完整本地应用：
@@ -228,6 +244,24 @@ TAVILY_API_KEY=
 ```
 
 The app still supports local resume/JD analysis without API keys. Job search requires `TAVILY_API_KEY`; LLM polish requires `OPENAI_API_KEY`.
+
+## No-Key Mode
+
+This project can be used without Tavily or OpenAI keys.
+
+Without API keys, users can still:
+
+- Search jobs manually on platforms such as Boss Zhipin, Shixiseng, Nowcoder, Zhaopin, 51Job, Lagou, or company career pages.
+- Copy a job description and paste it into the app.
+- Click "Extract manual JD" to generate structured job information.
+- Upload or paste a resume.
+- Generate resume-JD match analysis, comparison tables, and rule-based resume improvement suggestions.
+
+No-key mode does not support automatic public job search, but it still supports local JD analysis, resume matching, and rule-based resume polish suggestions.
+
+To enable automatic public job search, configure your own `TAVILY_API_KEY`. Tavily may provide free credits, but quota is limited, and broader or deeper search consumes more credits.
+
+To enable LLM polish, configure your own `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `MODEL_NAME`. Without these settings, the app uses rule-based suggestions.
 
 ## Running Locally
 

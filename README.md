@@ -104,11 +104,9 @@ Windows 用户也可以运行：
 8. 在简历润色页面生成优化建议。未配置大模型 Key 时使用规则版建议；配置 `OPENAI_API_KEY` 后可启用大模型润色。
 9. 根据报告修改自己的简历，再重新上传或粘贴，反复对比优化效果。
 
-### 自愿打赏
-
 如果这个项目对你有帮助，欢迎自愿打赏支持后续维护。打赏完全自愿，不影响任何功能使用。
 
-![微信收款码](docs/wechat-reward.jpg)
+<img src="docs/wechat-reward.jpg" alt="微信收款码" width="120">
 
 ### Replit 配置
 
@@ -264,11 +262,9 @@ Keep the terminal open while using the app.
 8. Generate resume polish suggestions. The rule-based version works without an LLM key; the LLM flow requires `OPENAI_API_KEY`.
 9. Revise the resume and run the analysis again to compare improvements.
 
-## Voluntary Support
-
 如果这个项目对你有帮助，欢迎自愿打赏支持后续维护。打赏完全自愿，不影响任何功能使用。
 
-![WeChat reward QR code](docs/wechat-reward.jpg)
+<img src="docs/wechat-reward.jpg" alt="WeChat reward QR code" width="120">
 
 ## Replit
 

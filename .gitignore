@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+resume.txt
+.venv/
+.pythonlibs/
+.cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+dist/
+build/
+*.egg-info/

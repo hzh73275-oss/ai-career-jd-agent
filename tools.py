@@ -1,63 +1,72 @@
-import httpx
-
-def wikipedia(q):
-  """ 
-  wikipedia:
-  e.g. wikipedia: Django
-  Returns a summary from searching Wikipedia
-  """
-  return httpx.get("https://en.wikipedia.org/w/api.php", params={
-      "action": "query",
-      "list": "search",
-      "srsearch": q,
-      "format": "json"
-  }).json()["query"]["search"][0]["snippet"]
+from src.core.config import load_settings
+from src.services.formatters import (
+  format_job_info,
+  format_match_report,
+  format_resume_advice,
+  format_search_results,
+)
+from src.workflows.resume_jd_workflow import ResumeJDWorkflow
 
 
-def simon_blog_search(q):
-  """
-  simon_blog_search:
-  e.g. simon_blog_search: Django
-  Search Simon's blog for that term
-  """
-  results = httpx.get("https://datasette.simonwillison.net/simonwillisonblog.json", params={
-      "sql": """
-      select
-        blog_entry.title || ': ' || substr(html_strip_tags(blog_entry.body), 0, 1000) as text,
-        blog_entry.created
-      from
-        blog_entry join blog_entry_fts on blog_entry.rowid = blog_entry_fts.rowid
-      where
-        blog_entry_fts match escape_fts(:q)
-      order by
-        blog_entry_fts.rank
-      limit
-        1""".strip(),
-      "_shape": "array",
-      "q": q,
-  }).json()
-  return results[0]["text"]
+WORKFLOW = ResumeJDWorkflow(load_settings(), profile_name="ai_intern")
 
-def calculate(what):
-  """
-  calculate:
-  e.g. calculate: 4 * 7 / 3
-  Runs a calculation and returns the number - uses Python so be sure to use floating point syntax if     necessary
-  """
-  return eval(what)
 
-def fetch_last_todo(input=None):
+def search_jobs(query):
   """
-  fetch_last_todo:
-  e.g. fetch_last_todo: none
-  Returns the last todo item from the fetched todos list. No input required.
+  search_jobs:
+  e.g. search_jobs: 大模型 Agent 实习 北京 上海 武汉
+  使用 Tavily 搜索多来源公开岗位，默认最多返回 30 个候选岗位。
   """
-  url = "https://jsonplaceholder.typicode.com/todos/1"
-  response = httpx.get(url)
+  try:
+    return format_search_results(WORKFLOW.search_jobs(query, max_results=30))
+  except Exception as exc:
+    return f"错误：岗位搜索失败：{exc}"
 
-  if response.status_code == 200:
-    print(response.json())
-    return response.json()
-  else:
-    print('failed')
-    return "Failed to fetch data"
+
+def extract_job_info(input_text):
+  """
+  extract_job_info:
+  e.g. extract_job_info: 1
+  从搜索结果编号、公开岗位链接或用户粘贴的岗位描述中提取岗位信息。
+  """
+  try:
+    return format_job_info(WORKFLOW.extract_job(input_text))
+  except Exception as exc:
+    return f"错误：岗位解析失败：{exc}"
+
+
+def read_resume(input_text=None):
+  """
+  read_resume:
+  e.g. read_resume: none
+  读取默认 resume.txt，或读取用户提供的文本、Word 路径、PDF 路径。
+  """
+  try:
+    value = "" if input_text in (None, "none") else str(input_text)
+    return WORKFLOW.load_resume(value)
+  except Exception as exc:
+    return f"错误：简历读取失败：{exc}"
+
+
+def match_resume_to_job(input_text=None):
+  """
+  match_resume_to_job:
+  e.g. match_resume_to_job: none
+  对比简历和最近一次提取的岗位信息，输出匹配点、缺口和风险提示。
+  """
+  try:
+    return format_match_report(WORKFLOW.match())
+  except Exception as exc:
+    return f"错误：匹配分析失败：{exc}"
+
+
+def suggest_resume_edits(input_text=None):
+  """
+  suggest_resume_edits:
+  e.g. suggest_resume_edits: none
+  根据最近一次匹配报告给出简历优化建议和项目补强计划。
+  """
+  try:
+    return format_resume_advice(WORKFLOW.advise())
+  except Exception as exc:
+    return f"错误：建议生成失败：{exc}"

@@ -5,6 +5,8 @@ resume.txt
 .venv/
 .pythonlibs/
 .cache/
+../.cache/
+data/vector_store/
 __pycache__/
 *.pyc
 *.pyo

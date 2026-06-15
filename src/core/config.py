@@ -6,7 +6,25 @@ from dotenv import load_dotenv
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+PROJECT_DIR = ROOT_DIR.parent
 DEFAULT_RESUME_PATH = ROOT_DIR / "resume.txt"
+PROJECT_CACHE_DIR = PROJECT_DIR / ".cache"
+VECTOR_STORE_DIR = ROOT_DIR / "data" / "vector_store"
+
+
+def configure_local_model_cache() -> None:
+  cache_map = {
+    "HF_HOME": PROJECT_CACHE_DIR / "huggingface",
+    "HUGGINGFACE_HUB_CACHE": PROJECT_CACHE_DIR / "huggingface" / "hub",
+    "TRANSFORMERS_CACHE": PROJECT_CACHE_DIR / "huggingface" / "transformers",
+    "SENTENCE_TRANSFORMERS_HOME": PROJECT_CACHE_DIR / "sentence-transformers",
+    "TORCH_HOME": PROJECT_CACHE_DIR / "torch",
+  }
+  for key, path in cache_map.items():
+    os.environ.setdefault(key, str(path))
+
+
+configure_local_model_cache()
 
 
 @dataclass(frozen=True)

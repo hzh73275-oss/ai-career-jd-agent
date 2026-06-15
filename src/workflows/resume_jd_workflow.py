@@ -9,6 +9,7 @@ from src.core.schemas import (
   ResumeAdvice,
   ResumeTranslationAdvice,
   SearchResult,
+  SkillInsights,
 )
 from src.services.advisor import build_resume_advice
 from src.services.jd_parser import extract_job_info
@@ -17,6 +18,7 @@ from src.services.matcher import match_resume_to_job
 from src.services.resume_comparison import compare_resume_to_jd
 from src.services.resume_service import load_resume
 from src.services.resume_translator import build_resume_translation_advice, polish_resume_translation
+from src.services.skill_gap_analyzer import analyze_skill_gaps
 
 
 @dataclass
@@ -30,6 +32,7 @@ class ResumeJDWorkflow:
   current_advice: ResumeAdvice | None = None
   current_translation: ResumeTranslationAdvice | None = None
   current_comparison: JDResumeComparison | None = None
+  current_skill_insights: SkillInsights | None = None
 
   @property
   def profile(self):
@@ -107,3 +110,11 @@ class ResumeJDWorkflow:
       self.profile,
     )
     return self.current_comparison
+
+  def analyze_skills(self) -> SkillInsights:
+    if not self.current_job:
+      raise RuntimeError("还没有岗位信息，请先提取 JD。")
+    if not self.current_resume:
+      self.load_resume()
+    self.current_skill_insights = analyze_skill_gaps(self.current_resume, self.current_job)
+    return self.current_skill_insights

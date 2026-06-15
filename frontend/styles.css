@@ -355,6 +355,18 @@ button {
   margin-top: 10px;
 }
 
+.flow-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.flow-list li {
+  margin: 0 0 6px;
+}
+
 .mode-help {
   margin-top: 7px;
   color: var(--muted);
@@ -893,6 +905,146 @@ button {
   line-height: 1.7;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.skill-column h4 {
+  margin: 0 0 8px;
+}
+
+.skill-list {
+  display: grid;
+  gap: 10px;
+}
+
+.skill-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffaf5;
+  padding: 12px;
+  min-width: 0;
+}
+
+.skill-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.skill-card p {
+  margin: 6px 0 0;
+  color: #475467;
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.skill-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.small-empty {
+  min-height: auto;
+  padding: 12px;
+}
+
+.skill-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.quick-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.skill-browser-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.skill-browser-card {
+  padding: 15px;
+}
+
+.skill-title {
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.skill-desc {
+  margin: 10px 0;
+  color: #475467;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.skill-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 12px;
+}
+
+.mini-chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff7ef;
+  color: #475467;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.skill-section {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.skill-section h4 {
+  margin: 0 0 7px;
+  font-size: 13px;
+}
+
+.skill-section ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.skill-section li {
+  color: #475467;
+  font-size: 13px;
+  line-height: 1.65;
+  margin-bottom: 5px;
+}
+
+.source-link {
+  display: inline-flex;
+  margin: 0 8px 6px 0;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.source-link:hover {
+  text-decoration: underline;
 }
 
 .report-row {

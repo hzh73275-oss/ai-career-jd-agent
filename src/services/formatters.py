@@ -7,6 +7,7 @@ from src.core.schemas import (
   ResumeAdvice,
   ResumeTranslationAdvice,
   SearchResult,
+  SkillInsights,
 )
 
 
@@ -107,15 +108,57 @@ def format_comparison(comparison: JDResumeComparison) -> str:
   return "\n".join(lines)
 
 
+def format_skill_insights(insights: SkillInsights) -> str:
+  lines = [
+    "岗位技能知识库分析：",
+    insights.notice,
+  ]
+  sections = [
+    ("已覆盖技能", insights.matched_skills),
+    ("证据较弱技能", insights.weak_evidence_skills),
+    ("缺失技能", insights.missing_skills),
+  ]
+  for title, items in sections:
+    lines.append(f"\n{title}：")
+    if not items:
+      lines.append("暂无")
+      continue
+    for index, item in enumerate(items, start=1):
+      evidence = "；".join(item.evidence[:2]) if item.evidence else "暂无明确证据"
+      terms = "、".join(item.matched_terms[:6]) if item.matched_terms else "暂无"
+      lines.append(f"{index}. {item.name}（{item.status}，score={item.score}）")
+      lines.append(f"   命中线索：{terms}")
+      lines.append(f"   简历证据：{evidence}")
+      lines.append(f"   建议：{item.suggestion}")
+
+  lines.append("\n推荐补强项目：")
+  if insights.project_suggestions:
+    lines.extend(f"{index}. {item}" for index, item in enumerate(insights.project_suggestions, start=1))
+  else:
+    lines.append("暂无")
+
+  lines.append("\n面试准备题：")
+  if insights.interview_questions:
+    for index, item in enumerate(insights.interview_questions[:10], start=1):
+      answer_points = "；".join(item.answer_points)
+      lines.append(f"{index}. [{item.skill_name}/{item.level}] {item.question}")
+      lines.append(f"   答题要点：{answer_points}")
+  else:
+    lines.append("暂无")
+  return "\n".join(lines)
+
+
 def format_full_report(
   report_text: str,
   comparison_text: str,
+  skill_text: str,
   translation_text: str,
   advice_text: str,
 ) -> str:
   return "\n\n".join([
     "一、完整匹配分析\n" + (report_text or "暂无"),
     "二、完整点对点对比\n" + (comparison_text or "暂无"),
-    "三、完整简历翻译润色\n" + (translation_text or "暂无"),
-    "四、完整补强计划\n" + (advice_text or "暂无"),
+    "三、岗位技能知识库分析\n" + (skill_text or "暂无"),
+    "四、完整简历翻译润色\n" + (translation_text or "暂无"),
+    "五、完整补强计划\n" + (advice_text or "暂无"),
   ])

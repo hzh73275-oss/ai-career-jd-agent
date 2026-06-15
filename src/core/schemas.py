@@ -70,6 +70,40 @@ class JDResumeComparison:
 
 
 @dataclass
+class InterviewQuestion:
+  question: str
+  level: str
+  answer_points: list[str]
+  skill_id: str = ""
+  skill_name: str = ""
+
+
+@dataclass
+class SkillInsightItem:
+  id: str
+  name: str
+  category: str
+  score: int
+  status: str
+  evidence: list[str]
+  matched_terms: list[str]
+  definition: str
+  suggestion: str
+  source_refs: list[dict[str, str]] = field(default_factory=list)
+
+
+@dataclass
+class SkillInsights:
+  matched_skills: list[SkillInsightItem]
+  weak_evidence_skills: list[SkillInsightItem]
+  missing_skills: list[SkillInsightItem]
+  project_suggestions: list[str]
+  interview_questions: list[InterviewQuestion]
+  source: str = "local_skill_library"
+  notice: str = "基于本地岗位技能知识库的混合检索增强分析，优先使用本地向量库，不调用付费 API。"
+
+
+@dataclass
 class RoleProfile:
   name: str
   display_name: str

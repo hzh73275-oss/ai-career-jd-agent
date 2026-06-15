@@ -15,19 +15,8 @@ if (Test-Path $ProjectPython) {
 Start-Process powershell.exe -ArgumentList @(
   "-NoExit",
   "-Command",
-  "cd '$Root'; '$Python' -B -m src.api.server"
+  "cd '$Root'; '$Python' -B run_app.py"
 )
-
-Start-Sleep -Seconds 2
-
-Start-Process powershell.exe -ArgumentList @(
-  "-NoExit",
-  "-Command",
-  "cd '$Root'; '$Python' -m http.server 5175 --bind 127.0.0.1 --directory frontend"
-)
-
-Start-Sleep -Seconds 1
-Start-Process "http://127.0.0.1:5175"
 
 Write-Host "Started:"
 Write-Host "API: http://127.0.0.1:8765"

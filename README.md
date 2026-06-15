@@ -2,19 +2,22 @@
 
 ## 中文说明
 
-AI Career JD Agent 是一个本地运行的简历与岗位描述分析工作台。它可以帮助用户搜索公开岗位、提取结构化 JD 信息、将简历与目标岗位进行匹配分析，并生成简历优化建议。
+AI Career JD Agent 是一个本地运行的 AI 求职决策工作台。它围绕“简历输入 -> 岗位输入 -> JD 解析 -> 简历匹配 -> 技能库 RAG -> 面试题与补强建议 -> 完整报告”形成闭环，帮助用户判断岗位匹配度、定位技能缺口，并准备简历优化和面试复盘。
 
 本项目默认面向本地使用。API Key 只会从用户自己的 `.env` 文件读取，仓库中不包含任何真实密钥。
 
 ### 功能特性
 
-- 本地 Web 工作台，包含静态前端页面和 Python API 服务。
+- 本地 Web 工作台，包含 Vue 前端页面和 FastAPI 后端服务。
 - 支持通过粘贴文本、本地 `resume.txt`、上传 TXT / DOCX / 文本型 PDF 读取简历。
 - 配置 `TAVILY_API_KEY` 后，可通过 Tavily Search 搜索公开岗位。
-- 未配置搜索 Key 时，仍可粘贴 JD 做本地分析。
+- 未配置搜索 Key 时，仍可直接粘贴 JD 做本地分析。
 - 支持提取岗位名称、公司、职责、要求、技能等结构化 JD 信息。
 - 支持简历与 JD 的匹配评分、优势分析、短板分析、风险提示和行动建议。
 - 支持生成逐项对照表，便于检查简历是否覆盖岗位要求。
+- 内置本地技能库 / 面试题库，无 JD、无简历、无 API Key 时也能独立浏览。
+- 支持 Chroma + 本地 BGE embedding 的技能库 hybrid RAG 检索。
+- 支持普通 Workflow 和 LangGraph 两种匹配分析模式，LangGraph 模式会展示节点执行链路。
 - 未配置大模型 Key 时，仍可使用规则版简历优化建议。
 - 配置 `OPENAI_API_KEY` 后，可启用 OpenAI 或 OpenAI Compatible API 的大模型润色流程。
 
@@ -23,12 +26,13 @@ AI Career JD Agent 是一个本地运行的简历与岗位描述分析工作台�
 ```text
 .
 ├── frontend/              # 静态 Web 前端
+├── data/                  # 本地技能库，不提交向量索引缓存
 ├── src/
-│   ├── api/               # 本地 HTTP API
+│   ├── api/               # FastAPI 本地 API
 │   ├── core/              # 配置、数据结构、用户画像
+│   ├── graphs/            # LangGraph 核心分析链路
 │   ├── parsers/           # 简历和文档解析
 │   ├── services/          # 搜索、匹配、翻译、格式化等服务
-│   ├── ui/                # Streamlit 入口
 │   └── workflows/         # 简历/JD 工作流编排
 ├── run_app.py             # 一键启动本地应用
 ├── run_app.bat            # Windows 启动脚本
@@ -76,12 +80,13 @@ TAVILY_API_KEY=
 本项目支持无 Key 使用。不开通 Tavily / OpenAI Key 时，仍然可以完成核心流程：
 
 - 手动去 Boss 直聘、实习僧、牛客、智联招聘、前程无忧、拉勾或公司官网搜索岗位。
-- 复制岗位 JD，粘贴到项目的“岗位搜索”页面。
+- 复制岗位 JD，粘贴到项目“岗位搜索”页面的“手动粘贴 JD”入口。
 - 点击“提取手动 JD”，生成结构化岗位信息。
 - 上传或粘贴自己的简历。
-- 继续生成简历与 JD 的匹配分析、逐项对照表和简历优化建议。
+- 继续生成简历与 JD 的匹配分析、逐项对照表、技能缺口、面试题和简历优化建议。
+- 直接进入“技能库”页面，浏览本地技能卡、面试题和项目补强建议。
 
-无 Key 模式下不可自动联网搜索岗位，但不影响本地 JD 分析、简历匹配和规则版简历优化建议。
+无 Key 模式下不可自动联网搜索岗位，但不影响本地 JD 分析、技能库 RAG、简历匹配、LangGraph 分析和规则版简历优化建议。
 
 如果需要自动搜索公开岗位，可以配置自己的 `TAVILY_API_KEY`。Tavily 通常提供免费额度，但额度有限，深度搜索和多平台搜索会消耗更多 credits。
 
@@ -112,13 +117,24 @@ Windows 用户也可以运行：
 
 1. 打开 Web 页面 `http://127.0.0.1:5175`。
 2. 在“简历”页面粘贴简历文本，或上传 TXT / DOCX / 文本型 PDF 简历文件。
-3. 在“岗位搜索”页面输入岗位关键词，例如 `AI 实习生`、`机器学习工程师`、`数据分析实习生`。
-4. 如果已经配置 `TAVILY_API_KEY`，可以直接搜索公开岗位；如果没有配置，也可以手动粘贴 JD 内容。
+3. 在“岗位搜索”页面选择岗位输入方式：配置 `TAVILY_API_KEY` 时可联网搜索；没有 Key 时可直接粘贴 JD。
+4. 点击“提取岗位信息”或“提取手动 JD”，生成结构化 JD。
 5. 选择一个岗位，进入岗位详情页，系统会提取岗位名称、职责、要求和技能点。
-6. 点击匹配分析，查看简历与 JD 的匹配分数、优势、短板、风险提示和补强建议。
+6. 进入“匹配分析”，选择普通 Workflow 或 LangGraph 模式，生成匹配报告。
 7. 查看逐项对照表，检查简历中哪些经历已经覆盖岗位要求，哪些内容还需要补充。
-8. 在简历润色页面生成优化建议。未配置大模型 Key 时使用规则版建议；配置 `OPENAI_API_KEY` 后可启用大模型润色。
-9. 根据报告修改自己的简历，再重新上传或粘贴，反复对比优化效果。
+8. 进入“技能库”页面，可独立搜索 `RAG`、`Agent`、`FastAPI`、`企业知识库问答` 等技能和面试题。
+9. 在“简历润色”页面生成优化建议。未配置大模型 Key 时使用规则版建议；配置 `OPENAI_API_KEY` 后可启用大模型润色。
+10. 根据报告修改自己的简历，再重新上传或粘贴，反复对比优化效果。
+
+### 本地 RAG 与 LangGraph
+
+- 技能库位于 `data/skill_library.json`，用于标准技能解释、JD 常见说法、简历证据模式、项目补强建议和面试题。
+- 向量索引使用 Chroma，默认保存在 `data/vector_store/`，该目录不应提交到 Git。
+- 本地 embedding 缓存默认放在项目上级目录的 `.cache/`，避免占用 C 盘。
+- `/api/skills/search` 支持 `keyword`、`vector`、`hybrid` 三种模式，默认使用 hybrid。
+- `/api/match` 是稳定的普通 Workflow 匹配链路。
+- `/api/graph/match` 是 LangGraph 核心分析链路，会返回 `graph_trace`，用于查看节点执行过程。
+- 技能库浏览、面试题查看、向量索引构建是独立工具模块，不进入 LangGraph，避免过度设计。
 
 
 ### Replit 配置
@@ -138,7 +154,11 @@ run_app.py
 - `POST /api/search`：搜索公开岗位。
 - `POST /api/job`：提取结构化 JD 信息。
 - `POST /api/match`：生成简历与 JD 匹配分析报告。
+- `POST /api/graph/match`：通过 LangGraph 生成匹配报告并返回执行链路。
 - `POST /api/polish`：生成简历润色结果。
+- `GET /api/skills`：读取本地技能库。
+- `POST /api/skills/search`：本地关键词 / 向量 / 混合检索技能库。
+- `POST /api/skills/reindex`：重建本地 Chroma 向量索引。
 
 ### 安全说明
 
@@ -147,6 +167,7 @@ run_app.py
 - `.gitignore` 已排除 `.env` 和 `.env.*`，但允许提交 `.env.example`。
 - 所有第三方 API 调用额度和费用都由配置 Key 的使用者自行承担。
 - 公开岗位搜索会消耗 Tavily credits，搜索范围越广或深度越高，消耗越多。
+- 不要提交 `data/vector_store/`、模型缓存、`.cache/` 等本地生成文件。
 - 如果 `resume.txt` 包含个人简历、手机号、邮箱、学校、公司等隐私信息，发布到 GitHub 前请不要提交它。
 
 上传 GitHub 前建议执行：
@@ -179,13 +200,14 @@ The project is designed for local use. API keys are loaded only from the user's 
 
 ## Features
 
-- Local web workbench with a static frontend and Python API server.
+- Local web workbench with a Vue frontend and FastAPI backend.
 - Resume loading from pasted text, local `resume.txt`, or uploaded TXT / DOCX / text-based PDF files.
 - Public job search through Tavily Search when `TAVILY_API_KEY` is configured.
 - Manual JD analysis when no search key is configured.
 - Structured JD extraction for title, company, requirements, responsibilities, and skills.
 - Resume-to-JD match scoring with gaps, strengths, risks, and recommended next actions.
 - Resume comparison table for point-by-point review.
+- Local skill-library analysis for normalized job skills, resume evidence, project suggestions, and interview questions.
 - Rule-based resume polish suggestions without an LLM key.
 - Optional OpenAI-compatible polish flow when `OPENAI_API_KEY` is configured.
 
@@ -194,12 +216,12 @@ The project is designed for local use. API keys are loaded only from the user's 
 ```text
 .
 ├── frontend/              # Static web UI
+├── data/                  # Local skill library
 ├── src/
-│   ├── api/               # Local HTTP API
+│   ├── api/               # FastAPI local API
 │   ├── core/              # Configuration, schemas, profiles
 │   ├── parsers/           # Resume/document parsing
 │   ├── services/          # Search, matching, translation, formatting
-│   ├── ui/                # Streamlit UI entry
 │   └── workflows/         # Resume/JD workflow orchestration
 ├── run_app.py             # One-command local app launcher
 ├── run_app.bat            # Windows launcher
@@ -252,7 +274,7 @@ Without API keys, users can still:
 - Copy a job description and paste it into the app.
 - Click "Extract manual JD" to generate structured job information.
 - Upload or paste a resume.
-- Generate resume-JD match analysis, comparison tables, and rule-based resume improvement suggestions.
+- Generate resume-JD match analysis, comparison tables, local skill-library insights, and rule-based resume improvement suggestions.
 
 No-key mode does not support automatic public job search, but it still supports local JD analysis, resume matching, and rule-based resume polish suggestions.
 
@@ -314,6 +336,7 @@ The local API exposes these main routes:
 - `POST /api/search` searches public job postings.
 - `POST /api/job` extracts structured JD details.
 - `POST /api/match` builds the resume/JD analysis report.
+- `/api/match` also returns `skill_insights` for local skill-library analysis.
 - `POST /api/polish` generates resume polish output.
 
 ## Security Notes
@@ -335,7 +358,7 @@ Confirm that `.env` is not staged or listed as an upload candidate.
 
 ## Development Notes
 
-- `run_app.py` starts both the local API and the static frontend.
+- `run_app.py` starts both the FastAPI backend and the static Vue frontend.
 - `src.api.server` can be run directly when only the API is needed.
 - The frontend is static and can be served from the `frontend/` directory.
 - Uploaded resume files are written to the system temporary directory, not to the repository.

@@ -33,10 +33,32 @@ ensure_project_python()
 if str(ROOT) not in sys.path:
   sys.path.insert(0, str(ROOT))
 
-from src.api.server import Handler as ApiHandler
+import uvicorn
 
 
-def start_server(name: str, host: str, port: int, handler) -> ThreadingHTTPServer:
+class NoCacheStaticHandler(SimpleHTTPRequestHandler):
+  def end_headers(self) -> None:
+    self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+    self.send_header("Pragma", "no-cache")
+    self.send_header("Expires", "0")
+    super().end_headers()
+
+
+def start_api_server(host: str, port: int) -> uvicorn.Server:
+  config = uvicorn.Config(
+    "src.api.server:app",
+    host=host,
+    port=port,
+    log_level="warning",
+  )
+  server = uvicorn.Server(config)
+  thread = threading.Thread(target=server.run, daemon=True)
+  thread.start()
+  print(f"API: http://{host}:{port}")
+  return server
+
+
+def start_static_server(name: str, host: str, port: int, handler) -> ThreadingHTTPServer:
   server = ThreadingHTTPServer((host, port), handler)
   thread = threading.Thread(target=server.serve_forever, daemon=True)
   thread.start()
@@ -48,13 +70,13 @@ def main() -> None:
   if not FRONTEND_DIR.exists():
     raise RuntimeError(f"Frontend folder not found: {FRONTEND_DIR}")
 
-  api_server = start_server("API", "127.0.0.1", 8765, ApiHandler)
+  api_server = start_api_server("127.0.0.1", 8765)
 
   frontend_handler = functools.partial(
-    SimpleHTTPRequestHandler,
+    NoCacheStaticHandler,
     directory=str(FRONTEND_DIR),
   )
-  ui_server = start_server("UI", "127.0.0.1", 5175, frontend_handler)
+  ui_server = start_static_server("UI", "127.0.0.1", 5175, frontend_handler)
 
   url = "http://127.0.0.1:5175"
   print("")
@@ -67,7 +89,7 @@ def main() -> None:
       time.sleep(1)
   except KeyboardInterrupt:
     print("\nStopping...")
-    api_server.shutdown()
+    api_server.should_exit = True
     ui_server.shutdown()
 
 

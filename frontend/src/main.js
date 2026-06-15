@@ -8,6 +8,7 @@ const pages = [
   { key: "search", name: "岗位搜索", icon: "⌕" },
   { key: "detail", name: "岗位详情", icon: "◉" },
   { key: "match", name: "匹配分析", icon: "◎" },
+  { key: "skills", name: "技能库", icon: "◆" },
   { key: "polish", name: "简历润色", icon: "✎" },
   { key: "report", name: "详细报告", icon: "□" },
 ];
@@ -51,6 +52,15 @@ const emptyReport = {
   matched_keywords: [],
   missing_keywords: [],
   recommendation: "读取简历并选择岗位后生成。",
+};
+
+const emptySkillInsights = {
+  matched_skills: [],
+  weak_evidence_skills: [],
+  missing_skills: [],
+  project_suggestions: [],
+  interview_questions: [],
+  notice: "生成匹配分析后显示岗位技能知识库结果。",
 };
 
 function readFileAsBase64(file) {
@@ -131,11 +141,30 @@ const app = {
 
       reportReady: false,
       matchLoading: false,
+      matchMode: "workflow",
+      graphTrace: [],
       report: emptyReport,
       reportText: "",
       adviceText: "",
       comparisonRows: [],
       comparisonText: "",
+      skillInsights: emptySkillInsights,
+      skillText: "",
+      skillLibrary: [],
+      skillCategories: [],
+      skillQuery: "",
+      skillCategory: "",
+      skillMode: "hybrid",
+      skillLoading: false,
+      skillIndexing: false,
+      skillVectorStatus: {
+        ready: false,
+        count: 0,
+        path: "",
+        model: "",
+        message: "本地向量索引未检查",
+      },
+      contextSkillIds: [],
       translationText: "",
       fullReport: "",
 
@@ -145,6 +174,7 @@ const app = {
       reportExpanded: {
         match: false,
         comparison: false,
+        skill: true,
         polish: true,
         advice: false,
       },
@@ -170,6 +200,19 @@ const app = {
       matched: state.reportReady ? state.report.matched_keywords?.length || 0 : 0,
       missing: state.reportReady ? state.report.missing_keywords?.length || 0 : 0,
     }));
+
+    const canGenerateMatch = computed(() => Boolean(state.resumeLoaded && state.jobInfo));
+
+    const currentJdText = computed(() => {
+      if (!state.jobInfo) return "";
+      return [
+        state.jobInfo.title,
+        state.jobInfo.raw_text,
+        state.jobInfo.requirements?.join("；"),
+        state.jobInfo.responsibilities?.join("；"),
+        state.jobInfo.keywords?.join("、"),
+      ].filter(Boolean).join("\n");
+    });
 
     const tierCounts = computed(() => {
       const counts = { 冲刺岗: 0, 主投岗: 0, 保底岗: 0, 不建议: 0 };
@@ -237,8 +280,25 @@ const app = {
       return state.hasTavilyKey ? "接口正常" : "无 Key 模式";
     });
 
+    const skillStatusById = computed(() => {
+      const map = {};
+      for (const item of state.skillInsights.matched_skills || []) {
+        map[item.id] = "已覆盖";
+      }
+      for (const item of state.skillInsights.weak_evidence_skills || []) {
+        map[item.id] = "证据较弱";
+      }
+      for (const item of state.skillInsights.missing_skills || []) {
+        map[item.id] = "缺失";
+      }
+      return map;
+    });
+
     const setPage = (page) => {
       state.page = page;
+      if (page === "skills") {
+        loadSkillLibrary();
+      }
     };
 
     const resetTierPages = () => {
@@ -269,6 +329,105 @@ const app = {
     const setError = (message) => {
       state.error = message;
       state.notice = "";
+    };
+
+    const buildJobSkillQuery = () => {
+      if (!state.jobInfo) return "";
+      return [
+        state.jobInfo.title,
+        state.jobInfo.keywords?.join(" "),
+        state.jobInfo.requirements?.join(" "),
+        state.jobInfo.responsibilities?.join(" "),
+        state.jobInfo.raw_text,
+      ].filter(Boolean).join(" ");
+    };
+
+    const loadSkillLibrary = async () => {
+      state.skillLoading = true;
+      try {
+        const data = await apiGet("/api/skills");
+        state.skillLibrary = data.skills || [];
+        state.skillCategories = data.categories || [];
+        state.skillVectorStatus = data.vector_status || state.skillVectorStatus;
+        if (state.jobInfo) {
+          await refreshContextSkillMatches();
+        }
+      } catch (error) {
+        setError(`技能库读取失败：${error.message}`);
+      } finally {
+        state.skillLoading = false;
+      }
+    };
+
+    const searchSkillLibrary = async () => {
+      state.skillLoading = true;
+      try {
+        const data = await apiPost("/api/skills/search", {
+          query: state.skillQuery,
+          category: state.skillCategory,
+          limit: 100,
+          mode: state.skillMode,
+        });
+        state.skillLibrary = data.skills || [];
+        state.skillVectorStatus = data.vector_status || state.skillVectorStatus;
+      } catch (error) {
+        setError(`技能库搜索失败：${error.message}`);
+      } finally {
+        state.skillLoading = false;
+      }
+    };
+
+    const rebuildSkillIndex = async () => {
+      state.skillIndexing = true;
+      try {
+        const data = await apiPost("/api/skills/reindex");
+        state.skillVectorStatus = data.vector_status || state.skillVectorStatus;
+        setNotice(state.skillVectorStatus.message || "本地向量索引已重建。");
+        await searchSkillLibrary();
+      } catch (error) {
+        setError(`本地向量索引构建失败：${error.message}`);
+      } finally {
+        state.skillIndexing = false;
+      }
+    };
+
+    const resetSkillFilters = async () => {
+      state.skillQuery = "";
+      state.skillCategory = "";
+      await loadSkillLibrary();
+    };
+
+    const refreshContextSkillMatches = async () => {
+      const query = buildJobSkillQuery();
+      if (!query) {
+        state.contextSkillIds = [];
+        return;
+      }
+      try {
+        const data = await apiPost("/api/skills/search", { query, limit: 30, mode: "hybrid" });
+        state.contextSkillIds = (data.skills || []).map((skill) => skill.id);
+        state.skillVectorStatus = data.vector_status || state.skillVectorStatus;
+      } catch {
+        state.contextSkillIds = [];
+      }
+    };
+
+    const skillCardStatus = (skill) => {
+      if (skillStatusById.value[skill.id]) {
+        return skillStatusById.value[skill.id];
+      }
+      if (state.contextSkillIds.includes(skill.id)) {
+        return "当前 JD 命中";
+      }
+      return "";
+    };
+
+    const skillCardStatusClass = (skill) => {
+      const status = skillCardStatus(skill);
+      if (status === "已覆盖") return "green";
+      if (status === "证据较弱" || status === "当前 JD 命中") return "orange";
+      if (status === "缺失") return "red";
+      return "gray";
     };
 
     const checkApi = async () => {
@@ -389,6 +548,7 @@ const app = {
         };
         state.jobInfo = data.job;
         state.jobText = data.job_text;
+        await refreshContextSkillMatches();
         state.page = "detail";
         setNotice("手动 JD 已提取，可以继续生成匹配报告。");
       } catch (error) {
@@ -415,6 +575,7 @@ const app = {
         const data = await apiPost("/api/job", { input_text: inputText });
         state.jobInfo = data.job;
         state.jobText = data.job_text;
+        await refreshContextSkillMatches();
         setNotice("岗位信息已提取。");
       } catch (error) {
         setError(`岗位信息提取失败：${error.message}`);
@@ -424,18 +585,31 @@ const app = {
     };
 
     const generateMatch = async () => {
+      if (!canGenerateMatch.value) {
+        state.page = "match";
+        setNotice("生成完整匹配需要先读取简历并提取 JD。你也可以先直接查看技能库和面试题库。");
+        return;
+      }
       state.matchLoading = true;
       try {
-        const data = await apiPost("/api/match", {});
+        const data = state.matchMode === "graph"
+          ? await apiPost("/api/graph/match", {
+              resume_text: state.resumeText,
+              jd_text: currentJdText.value,
+            })
+          : await apiPost("/api/match", {});
         state.reportReady = true;
         state.report = data.report;
         state.reportText = data.report_text;
         state.adviceText = data.advice_text;
         state.comparisonRows = data.comparison_rows || [];
         state.comparisonText = data.comparison_text;
+        state.skillInsights = data.skill_insights || emptySkillInsights;
+        state.skillText = data.skill_text || "";
         state.translationText = data.translation_text;
         state.fullReport = data.full_report;
-        setNotice("匹配分析已生成。");
+        state.graphTrace = data.graph_trace || [];
+        setNotice(state.matchMode === "graph" ? "LangGraph 匹配分析已生成。" : "匹配分析已生成。");
       } catch (error) {
         setError(`匹配分析失败：${error.message}`);
       } finally {
@@ -482,6 +656,9 @@ const app = {
       if (status === "已匹配") return "green";
       if (status === "写得不清楚") return "orange";
       if (status === "简历缺失") return "red";
+      if (status === "已覆盖") return "green";
+      if (status === "证据较弱") return "orange";
+      if (status === "缺失") return "red";
       return "gray";
     };
 
@@ -497,6 +674,8 @@ const app = {
       tierNames,
       state,
       metrics,
+      canGenerateMatch,
+      currentJdText,
       tierCounts,
       currentJobs,
       showNoKeyGuide,
@@ -506,6 +685,7 @@ const app = {
       pagedJobs,
       visiblePageNumbers,
       selectedJobView,
+      skillStatusById,
       searchModeHelp,
       searchWaitingText,
       apiStatusText,
@@ -521,6 +701,12 @@ const app = {
       handleResumeFile,
       searchJobs,
       analyzeManualJd,
+      loadSkillLibrary,
+      searchSkillLibrary,
+      rebuildSkillIndex,
+      resetSkillFilters,
+      skillCardStatus,
+      skillCardStatusClass,
       selectJob,
       extractJob,
       generateMatch,
@@ -555,8 +741,20 @@ const app = {
 
           <div class="side-bottom">
             <div class="helper-card">
-              <div class="helper-title">使用说明</div>
-              <div class="helper-text">先启动本地 API，再上传简历、搜索岗位、生成匹配报告。</div>
+              <div class="helper-title">业务流程</div>
+              <ol class="flow-list">
+                <li>简历管理：上传或粘贴简历。</li>
+                <li>岗位输入：联网搜索，或直接粘贴 JD。</li>
+                <li>匹配分析：选择普通 Workflow 或 LangGraph。</li>
+                <li>技能库：无 JD 也能查技能和面试题。</li>
+                <li>简历润色：先用规则版，有 Key 再用大模型。</li>
+              </ol>
+            </div>
+            <div class="helper-card">
+              <div class="helper-title">两种路径</div>
+              <div class="helper-text"><b>无 Key：</b>粘贴 JD + 本地 RAG + 规则建议。</div>
+              <div class="helper-text"><b>有 Key：</b>联网搜岗位 + 可选大模型润色。</div>
+              <div class="helper-text"><b>独立模块：</b>技能库、面试题和向量索引不依赖匹配链路。</div>
             </div>
             <div class="helper-card">
               <div class="helper-title">当前状态</div>
@@ -690,7 +888,7 @@ const app = {
           <section v-if="state.page === 'search'" class="page">
             <div class="layout-search">
               <div class="card card-pad">
-                <div class="section-title">搜索条件</div>
+                <div class="section-title">联网搜索岗位</div>
                 <div class="field">
                   <label>岗位关键词</label>
                   <input class="input" v-model="state.query" />
@@ -721,9 +919,9 @@ const app = {
                   {{ searchWaitingText }}
                 </div>
                 <div v-if="showNoKeyGuide" class="key-guide-card">
-                  <div class="key-guide-title">无 Key 也可以继续使用</div>
+                  <div class="key-guide-title">联网搜索提示</div>
                   <div class="key-guide-note">
-                    {{ state.searchFallbackReason || "没有 Tavily Key？没关系。你可以先去招聘平台手动搜索岗位，再把 JD 粘贴到这里做本地分析。" }}
+                    {{ state.searchFallbackReason || "联网搜索需要 Tavily Key；没有 Key 时可以使用下方手动 JD 入口。" }}
                   </div>
                   <div class="platform-link-grid">
                     <a
@@ -736,30 +934,35 @@ const app = {
                       {{ platform.name }}
                     </a>
                   </div>
-                  <div class="field manual-jd-field">
-                    <label>粘贴 JD 做本地分析</label>
-                    <textarea
-                      class="textarea"
-                      v-model="state.manualJdText"
-                      placeholder="把招聘网站复制来的岗位描述粘贴到这里，不配置 Tavily Key 也能提取 JD、匹配简历。"
-                    ></textarea>
-                  </div>
-                  <button class="btn primary full" @click="analyzeManualJd" :disabled="state.jobLoading">
-                    {{ state.jobLoading ? "提取中..." : "提取手动 JD" }}
-                  </button>
                   <a class="key-guide-link" href="https://app.tavily.com" target="_blank">想开启自动搜索？去 Tavily 获取自己的 Key</a>
                 </div>
                 <button class="btn primary full" @click="searchJobs" :disabled="state.searchLoading">
                   {{ state.searchLoading ? "跨平台搜索中..." : "搜索岗位" }}
                 </button>
-                <div class="metric-note" style="margin-top:10px;">联网搜索使用你自己的 Tavily Key；深度搜索会消耗更多免费额度。</div>
+                <div class="metric-note" style="margin-top:10px;">联网搜索需要 Tavily Key；没有 Key 时请直接使用下方手动 JD。深度搜索会消耗更多免费额度。</div>
+
+                <div class="section-title" style="margin-top:22px;">手动粘贴 JD</div>
+                <div class="helper-text" style="margin-bottom:10px;">
+                  不需要 Tavily Key。粘贴招聘网站复制来的 JD 后，可直接提取岗位信息、匹配简历、进入普通 Workflow 或 LangGraph 分析。
+                </div>
+                <div class="field manual-jd-field">
+                  <label>岗位 JD</label>
+                  <textarea
+                    class="textarea"
+                    v-model="state.manualJdText"
+                    placeholder="把岗位描述粘贴到这里，例如职责、要求、技术栈、实习地点和投递条件。"
+                  ></textarea>
+                </div>
+                <button class="btn primary full" @click="analyzeManualJd" :disabled="state.jobLoading">
+                  {{ state.jobLoading ? "提取中..." : "提取手动 JD" }}
+                </button>
               </div>
 
               <div>
                 <div class="page-head" style="margin-bottom:12px;">
                   <div>
                     <h1 class="page-title">岗位列表</h1>
-                <div class="page-subtitle">{{ state.jobs.length ? '共 ' + state.jobs.length + ' 个候选岗位' : '还没有岗位结果。请先搜索岗位，或粘贴 JD 做本地分析。' }}</div>
+                <div class="page-subtitle">{{ state.jobs.length ? '共 ' + state.jobs.length + ' 个候选岗位' : '你可以联网搜索岗位，也可以直接粘贴 JD 做本地分析。' }}</div>
                   </div>
                 </div>
                 <div v-if="state.jobs.length" class="source-panel">
@@ -901,7 +1104,36 @@ const app = {
                 <h1 class="page-title">匹配分析结果</h1>
                 <div class="page-subtitle">用点对点对比看清楚：JD 要什么，你的简历有没有写出来。</div>
               </div>
-              <button class="btn primary" @click="generateMatch" :disabled="state.matchLoading">{{ state.matchLoading ? "生成中..." : "生成匹配分析" }}</button>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <select class="select" v-model="state.matchMode" style="width:180px;">
+                  <option value="workflow">普通 Workflow</option>
+                  <option value="graph">LangGraph</option>
+                </select>
+                <button class="btn primary" @click="generateMatch" :disabled="state.matchLoading">{{ state.matchLoading ? "生成中..." : "生成匹配分析" }}</button>
+              </div>
+            </div>
+
+            <div v-if="state.matchMode === 'graph'" class="card card-pad" style="margin-bottom:14px;">
+              <div class="section-title">
+                <span>LangGraph 核心链路</span>
+                <span class="status blue">Graph 模式</span>
+              </div>
+              <div class="helper-text">
+                Graph 模式只编排“简历 + JD → 匹配报告”这条核心分析链路；技能库浏览、面试题查看和向量索引构建仍然是独立普通 API。
+              </div>
+            </div>
+
+            <div v-if="!canGenerateMatch" class="card card-pad" style="margin-bottom:14px;">
+              <div class="section-title">
+                <span>还不能生成完整匹配</span>
+                <span class="status orange">需要简历 + JD</span>
+              </div>
+              <div class="helper-text">匹配分析需要读取简历并提取 JD；但技能库和面试题库是本地模块，不受 Tavily 额度影响，可以直接查看。</div>
+              <div class="quick-action-grid">
+                <button class="btn" @click="setPage('resume')">{{ state.resumeLoaded ? "查看简历" : "上传/粘贴简历" }}</button>
+                <button class="btn" @click="setPage('search')">搜索岗位或粘贴 JD</button>
+                <button class="btn primary" @click="setPage('skills')">查看技能库和面试题</button>
+              </div>
             </div>
 
             <div class="grid grid-4">
@@ -933,6 +1165,184 @@ const app = {
                 <div class="detail-block"><h4>投递建议</h4><p>{{ state.report.recommendation || "生成后显示" }}</p></div>
                 <div class="detail-block"><h4>待补关键词</h4><p>{{ state.report.missing_keywords?.slice(0, 8).join('、') || "生成后显示" }}</p></div>
                 <button class="btn primary full" @click="setPage('report')">查看完整报告</button>
+              </div>
+            </div>
+
+            <div v-if="state.graphTrace.length" class="card card-pad" style="margin-top:14px;">
+              <div class="section-title">
+                <span>LangGraph 执行链路</span>
+                <span class="status green">{{ state.graphTrace.length }} 个节点</span>
+              </div>
+              <div class="detail-list">
+                <div v-for="item in state.graphTrace" :key="item.node" class="detail-block">
+                  <h4>{{ item.node }} <span class="status" :class="item.status === 'success' ? 'green' : 'red'">{{ item.status }}</span></h4>
+                  <p>{{ item.summary }}</p>
+                  <div class="helper-text">{{ item.elapsed_ms }} ms</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card card-pad" style="margin-top:14px;">
+              <div class="section-title">
+                <span>岗位技能知识库分析</span>
+                <span class="status blue">本地 RAG</span>
+              </div>
+              <div class="helper-text" style="margin-bottom:12px;">{{ state.skillInsights.notice || "基于本地岗位技能知识库做技能识别、简历证据匹配和面试题推荐。" }}</div>
+              <div v-if="state.skillInsights.matched_skills?.length || state.skillInsights.weak_evidence_skills?.length || state.skillInsights.missing_skills?.length" class="skill-grid">
+                <div class="skill-column">
+                  <h4><span class="status green">已覆盖</span></h4>
+                  <div v-if="state.skillInsights.matched_skills?.length" class="skill-list">
+                    <div v-for="skill in state.skillInsights.matched_skills" :key="skill.id" class="skill-card">
+                      <div class="skill-card-head"><strong>{{ skill.name }}</strong><span class="status green">{{ skill.score }}</span></div>
+                      <p>{{ skill.definition }}</p>
+                      <p v-if="skill.evidence?.length"><b>证据：</b>{{ skill.evidence.slice(0, 2).join("；") }}</p>
+                      <p><b>建议：</b>{{ skill.suggestion }}</p>
+                    </div>
+                  </div>
+                  <div v-else class="empty small-empty">暂无明确覆盖技能。</div>
+                </div>
+                <div class="skill-column">
+                  <h4><span class="status orange">证据较弱</span></h4>
+                  <div v-if="state.skillInsights.weak_evidence_skills?.length" class="skill-list">
+                    <div v-for="skill in state.skillInsights.weak_evidence_skills" :key="skill.id" class="skill-card">
+                      <div class="skill-card-head"><strong>{{ skill.name }}</strong><span class="status orange">{{ skill.score }}</span></div>
+                      <p>{{ skill.definition }}</p>
+                      <p v-if="skill.evidence?.length"><b>已有线索：</b>{{ skill.evidence.slice(0, 2).join("；") }}</p>
+                      <p><b>补强：</b>{{ skill.suggestion }}</p>
+                    </div>
+                  </div>
+                  <div v-else class="empty small-empty">暂无证据较弱技能。</div>
+                </div>
+                <div class="skill-column">
+                  <h4><span class="status red">缺失</span></h4>
+                  <div v-if="state.skillInsights.missing_skills?.length" class="skill-list">
+                    <div v-for="skill in state.skillInsights.missing_skills" :key="skill.id" class="skill-card">
+                      <div class="skill-card-head"><strong>{{ skill.name }}</strong><span class="status red">{{ skill.score }}</span></div>
+                      <p>{{ skill.definition }}</p>
+                      <p><b>补强：</b>{{ skill.suggestion }}</p>
+                    </div>
+                  </div>
+                  <div v-else class="empty small-empty">暂无明显缺失技能。</div>
+                </div>
+              </div>
+              <div v-else class="empty">生成匹配分析后，会显示 JD 命中的标准技能、简历证据、缺口和面试准备题。</div>
+
+              <div class="skill-bottom-grid">
+                <div class="detail-block">
+                  <h4>推荐补强项目</h4>
+                  <ul v-if="state.skillInsights.project_suggestions?.length">
+                    <li v-for="item in state.skillInsights.project_suggestions" :key="item">{{ item }}</li>
+                  </ul>
+                  <p v-else>暂无补强项目建议。</p>
+                </div>
+                <div class="detail-block">
+                  <h4>面试准备题</h4>
+                  <ul v-if="state.skillInsights.interview_questions?.length">
+                    <li v-for="item in state.skillInsights.interview_questions.slice(0, 8)" :key="item.question">
+                      <b>{{ item.skill_name }} / {{ item.level }}：</b>{{ item.question }}
+                      <div class="helper-text">答题要点：{{ item.answer_points?.join("；") }}</div>
+                    </li>
+                  </ul>
+                  <p v-else>暂无面试题推荐。</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="state.page === 'skills'" class="page">
+            <div class="page-head">
+              <div>
+                <h1 class="page-title">岗位技能库 / 面试题库</h1>
+                <div class="page-subtitle">本地知识库，不需要 Tavily、DeepSeek 或 OpenAI。没有 JD 和简历也可以直接查看技能、补强项目和面试题。</div>
+              </div>
+              <button class="btn" @click="loadSkillLibrary" :disabled="state.skillLoading">{{ state.skillLoading ? "读取中..." : "刷新技能库" }}</button>
+            </div>
+
+            <div class="card card-pad">
+              <div class="section-title">
+                <span>本地检索</span>
+                <span class="status blue">{{ state.skillLibrary.length }} 项</span>
+              </div>
+              <div class="skill-toolbar">
+                <input class="input" v-model="state.skillQuery" placeholder="搜索技能、JD 关键词或面试题，例如 RAG / Agent / FastAPI" @keyup.enter="searchSkillLibrary" />
+                <select class="select" v-model="state.skillMode" @change="searchSkillLibrary">
+                  <option value="hybrid">混合检索</option>
+                  <option value="keyword">关键词</option>
+                  <option value="vector">语义</option>
+                </select>
+                <select class="select" v-model="state.skillCategory" @change="searchSkillLibrary">
+                  <option value="">全部分类</option>
+                  <option v-for="item in state.skillCategories" :key="item.name" :value="item.name">{{ item.name }}（{{ item.count }}）</option>
+                </select>
+                <button class="btn primary" @click="searchSkillLibrary" :disabled="state.skillLoading">搜索</button>
+                <button class="btn" @click="resetSkillFilters" :disabled="state.skillLoading">重置</button>
+                <button class="btn" @click="rebuildSkillIndex" :disabled="state.skillIndexing || state.skillLoading">
+                  {{ state.skillIndexing ? "构建中..." : "构建/重建语义索引" }}
+                </button>
+              </div>
+              <div class="helper-text" style="margin-top:10px;">
+                技能库支持独立浏览；如果已经提取 JD，会标记“当前 JD 命中”；如果已经生成匹配分析，会标记“已覆盖 / 证据较弱 / 缺失”。
+              </div>
+              <div class="helper-text" style="margin-top:8px;">
+                语义索引：{{ state.skillVectorStatus.ready ? "已就绪" : "未就绪" }}，
+                {{ state.skillVectorStatus.count || 0 }} 条；
+                模型：{{ state.skillVectorStatus.model || "BAAI/bge-small-zh-v1.5" }}；
+                路径：{{ state.skillVectorStatus.path || "D:\\learn_pytorch\\JD-agent\\agent-implementation\\data\\vector_store" }}
+              </div>
+            </div>
+
+            <div v-if="state.skillLoading" class="empty" style="margin-top:14px;">正在读取本地技能库...</div>
+            <div v-else-if="!state.skillLibrary.length" class="empty" style="margin-top:14px;">暂无技能卡片。请检查本地 API 是否启动，或 data/skill_library.json 是否存在。</div>
+            <div v-else class="skill-browser-grid" style="margin-top:14px;">
+              <div v-for="skill in state.skillLibrary" :key="skill.id" class="card skill-browser-card">
+                <div class="skill-card-head">
+                  <div>
+                    <div class="skill-title">{{ skill.name }}</div>
+                    <div class="helper-text">{{ skill.category }}</div>
+                  </div>
+                  <span v-if="skillCardStatus(skill)" class="status" :class="skillCardStatusClass(skill)">{{ skillCardStatus(skill) }}</span>
+                </div>
+
+                <p class="skill-desc">{{ skill.definition }}</p>
+
+                <div v-if="skill.retrieval_reason" class="helper-text">
+                  {{ skill.retrieval_reason }}
+                  <span v-if="skill.keyword_score">｜关键词 {{ skill.keyword_score }}</span>
+                  <span v-if="skill.vector_score">｜语义 {{ Number(skill.vector_score).toFixed(2) }}</span>
+                </div>
+
+                <div class="skill-chip-row">
+                  <span v-for="alias in (skill.aliases || []).slice(0, 8)" :key="alias" class="mini-chip">{{ alias }}</span>
+                </div>
+
+                <div class="skill-section">
+                  <h4>JD 常见说法</h4>
+                  <ul>
+                    <li v-for="item in (skill.jd_phrases || []).slice(0, 4)" :key="item">{{ item }}</li>
+                  </ul>
+                </div>
+
+                <div class="skill-section">
+                  <h4>项目补强建议</h4>
+                  <ul>
+                    <li v-for="item in (skill.project_suggestions || []).slice(0, 3)" :key="item">{{ item }}</li>
+                  </ul>
+                </div>
+
+                <div class="skill-section">
+                  <h4>面试题</h4>
+                  <ul>
+                    <li v-for="item in (skill.interview_questions || []).slice(0, 4)" :key="item.question">
+                      <b>{{ item.level }}：</b>{{ item.question }}
+                      <div class="helper-text">要点：{{ item.answer_points?.join("；") }}</div>
+                    </li>
+                  </ul>
+                </div>
+
+                <div class="skill-section" v-if="skill.source_refs?.length">
+                  <h4>来源</h4>
+                  <a v-for="ref in skill.source_refs" :key="ref.url" class="source-link" :href="ref.url" target="_blank" rel="noreferrer">{{ ref.title }}</a>
+                </div>
               </div>
             </div>
           </section>
@@ -995,6 +1405,14 @@ const app = {
                   <span class="status green">对比</span>
                 </button>
                 <div v-if="state.reportExpanded.comparison" class="report-section-body">{{ state.comparisonText || "暂无" }}</div>
+              </div>
+
+              <div class="report-section">
+                <button class="report-section-head" @click="toggleReportSection('skill')">
+                  <span>岗位技能知识库分析</span>
+                  <span class="status blue">RAG</span>
+                </button>
+                <div v-if="state.reportExpanded.skill" class="report-section-body">{{ state.skillText || "暂无" }}</div>
               </div>
 
               <div class="report-section">

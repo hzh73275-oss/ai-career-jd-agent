@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import base64
-import json
-import sys
 import tempfile
 from dataclasses import asdict, is_dataclass
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-  sys.path.insert(0, str(PROJECT_ROOT))
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from src.core.config import load_settings
 from src.services.formatters import (
@@ -22,12 +19,69 @@ from src.services.formatters import (
   format_match_report,
   format_resume_advice,
   format_resume_translation,
+  format_skill_insights,
 )
 from src.services.job_search import build_platform_notices, build_source_stats
+from src.services.skill_retriever import (
+  load_skill_library,
+  search_skill_library,
+  skill_categories,
+)
+from src.services.skill_vector_store import (
+  rebuild_skill_vector_index,
+  vector_store_status,
+)
+from src.graphs.resume_jd_graph import run_resume_jd_graph
 from src.workflows.resume_jd_workflow import ResumeJDWorkflow
 
 
 workflow = ResumeJDWorkflow(settings=load_settings(), profile_name="ai_intern")
+app = FastAPI(
+  title="AI Career JD Agent API",
+  description="Local API for resume-JD matching, public job search, and resume polish suggestions.",
+  version="0.1.0",
+)
+
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=["*"],
+  allow_credentials=False,
+  allow_methods=["*"],
+  allow_headers=["*"],
+)
+
+
+class ResumePayload(BaseModel):
+  text: str = ""
+  filename: str = ""
+  content_base64: str = ""
+
+
+class SearchPayload(BaseModel):
+  query: str = ""
+  max_results: int = 30
+  source_keys: list[str] | None = None
+  mode: str = "fast"
+
+
+class JobPayload(BaseModel):
+  input_text: str = ""
+
+
+class PolishPayload(BaseModel):
+  use_llm: bool = False
+
+
+class SkillSearchPayload(BaseModel):
+  query: str = ""
+  category: str = ""
+  limit: int = 50
+  mode: str = "hybrid"
+
+
+class GraphMatchPayload(BaseModel):
+  resume_text: str = ""
+  jd_text: str = ""
 
 
 def to_jsonable(value: Any) -> Any:
@@ -59,13 +113,31 @@ def save_upload(filename: str, content_base64: str) -> str:
   return str(target)
 
 
-def load_resume(payload: dict[str, Any]) -> dict[str, Any]:
-  text = (payload.get("text") or "").strip()
-  filename = payload.get("filename") or ""
-  content_base64 = payload.get("content_base64") or ""
+def normalize_mode(mode: str) -> str:
+  if mode in ["快速搜索", "quick", "fast"]:
+    return "fast"
+  if mode in ["深度搜索", "deep"]:
+    return "deep"
+  return "fast"
 
-  if content_base64:
-    path = save_upload(filename, content_base64)
+
+@app.get("/api/health")
+def health() -> dict[str, Any]:
+  settings = load_settings()
+  return ok({
+    "service": "AI 求职决策工作台本地 API",
+    "api_framework": "FastAPI",
+    "has_tavily_key": bool(settings.tavily_api_key),
+    "has_openai_key": bool(settings.openai_api_key),
+  })
+
+
+@app.post("/api/resume")
+def load_resume(payload: ResumePayload) -> dict[str, Any]:
+  text = payload.text.strip()
+
+  if payload.content_base64:
+    path = save_upload(payload.filename, payload.content_base64)
     resume_text = workflow.load_resume(path)
   elif text:
     resume_text = workflow.load_resume(text)
@@ -79,18 +151,15 @@ def load_resume(payload: dict[str, Any]) -> dict[str, Any]:
   })
 
 
-def search_jobs(payload: dict[str, Any]) -> dict[str, Any]:
-  query = (payload.get("query") or "").strip()
+@app.post("/api/search")
+def search_jobs(payload: SearchPayload) -> dict[str, Any]:
+  query = payload.query.strip()
   if not query:
     return fail("请先输入岗位关键词。")
-  max_results = int(payload.get("max_results") or 30)
-  max_results = max(5, min(max_results, 100))
-  source_keys = payload.get("source_keys") or None
-  mode = payload.get("mode") or "fast"
-  if mode in ["快速搜索", "quick"]:
-    mode = "fast"
-  if mode in ["深度搜索", "deep"]:
-    mode = "deep"
+
+  max_results = max(5, min(int(payload.max_results or 30), 100))
+  source_keys = payload.source_keys or None
+  mode = normalize_mode(payload.mode)
 
   results = workflow.search_jobs(
     query=query,
@@ -107,8 +176,9 @@ def search_jobs(payload: dict[str, Any]) -> dict[str, Any]:
   })
 
 
-def extract_job(payload: dict[str, Any]) -> dict[str, Any]:
-  input_text = (payload.get("input_text") or "").strip()
+@app.post("/api/job")
+def extract_job(payload: JobPayload) -> dict[str, Any]:
+  input_text = payload.input_text.strip()
   if not input_text:
     return fail("请先选择岗位或粘贴 JD。")
   job = workflow.extract_job(input_text)
@@ -118,98 +188,155 @@ def extract_job(payload: dict[str, Any]) -> dict[str, Any]:
   })
 
 
-def build_match(_: dict[str, Any]) -> dict[str, Any]:
+@app.post("/api/match")
+def build_match() -> dict[str, Any]:
   report = workflow.match()
   advice = workflow.advise()
   comparison = workflow.compare()
+  skill_insights = workflow.analyze_skills()
   translation = workflow.translate_resume(polish=False)
   report_text = format_match_report(report)
   advice_text = format_resume_advice(advice)
   comparison_text = format_comparison(comparison)
+  skill_text = format_skill_insights(skill_insights)
   translation_text = format_resume_translation(translation)
 
   return ok({
     "report": to_jsonable(report),
     "advice": to_jsonable(advice),
     "comparison": to_jsonable(comparison),
+    "skill_insights": to_jsonable(skill_insights),
     "translation": to_jsonable(translation),
     "comparison_rows": comparison_to_rows(comparison),
     "report_text": report_text,
     "advice_text": advice_text,
     "comparison_text": comparison_text,
+    "skill_text": skill_text,
     "translation_text": translation_text,
     "full_report": format_full_report(
       report_text,
       comparison_text,
+      skill_text,
       translation_text,
       advice_text,
     ),
   })
 
 
-def polish_resume(payload: dict[str, Any]) -> dict[str, Any]:
-  use_llm = bool(payload.get("use_llm"))
-  translation = workflow.translate_resume(polish=use_llm)
+@app.post("/api/graph/match")
+def build_graph_match(payload: GraphMatchPayload) -> dict[str, Any]:
+  resume_text = payload.resume_text.strip()
+  jd_text = payload.jd_text.strip()
+  if not resume_text:
+    return fail("请先上传或粘贴简历。")
+  if not jd_text:
+    return fail("请先选择岗位或粘贴 JD。")
+
+  try:
+    result = run_resume_jd_graph(
+      resume_text=resume_text,
+      jd_text=jd_text,
+      settings=load_settings(),
+      profile_name="ai_intern",
+    )
+  except Exception as exc:
+    return fail(f"LangGraph 匹配分析失败：{exc}")
+  return ok({
+    "graph_mode": True,
+    "graph_trace": result.get("trace", []),
+    "report": to_jsonable(result.get("match_report")),
+    "advice": to_jsonable(result.get("advice")),
+    "comparison": to_jsonable(result.get("comparison")),
+    "skill_insights": to_jsonable(result.get("skill_insights")),
+    "translation": to_jsonable(result.get("translation")),
+    "comparison_rows": result.get("comparison_rows", []),
+    "report_text": result.get("report_text", ""),
+    "advice_text": result.get("advice_text", ""),
+    "comparison_text": result.get("comparison_text", ""),
+    "skill_text": result.get("skill_text", ""),
+    "translation_text": result.get("translation_text", ""),
+    "full_report": result.get("full_report", ""),
+  })
+
+
+@app.post("/api/polish")
+def polish_resume(payload: PolishPayload) -> dict[str, Any]:
+  translation = workflow.translate_resume(polish=payload.use_llm)
   return ok({
     "translation": to_jsonable(translation),
     "translation_text": format_resume_translation(translation),
   })
 
 
-class Handler(BaseHTTPRequestHandler):
-  def log_message(self, format: str, *args: Any) -> None:
-    return
+@app.get("/api/skills")
+def list_skills() -> dict[str, Any]:
+  skills = load_skill_library()
+  return ok({
+    "skills": skills,
+    "count": len(skills),
+    "categories": skill_categories(skills),
+    "vector_status": vector_store_status(),
+    "source": "local_skill_library",
+  })
 
-  def _send(self, status: int, payload: dict[str, Any]) -> None:
-    body = json.dumps(to_jsonable(payload), ensure_ascii=False).encode("utf-8")
-    self.send_response(status)
-    self.send_header("Content-Type", "application/json; charset=utf-8")
-    self.send_header("Access-Control-Allow-Origin", "*")
-    self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-    self.send_header("Access-Control-Allow-Headers", "Content-Type")
-    self.send_header("Content-Length", str(len(body)))
-    self.end_headers()
-    self.wfile.write(body)
 
-  def do_OPTIONS(self) -> None:
-    self._send(200, ok())
+@app.get("/api/skills/categories")
+def list_skill_categories() -> dict[str, Any]:
+  return ok({
+    "categories": skill_categories(),
+  })
 
-  def do_GET(self) -> None:
-    if self.path.startswith("/api/health"):
-      settings = load_settings()
-      self._send(200, ok({
-        "service": "AI 求职决策工作台本地 API",
-        "has_tavily_key": bool(settings.tavily_api_key),
-        "has_openai_key": bool(settings.openai_api_key),
-      }))
-      return
-    self._send(404, fail("接口不存在。"))
 
-  def do_POST(self) -> None:
-    try:
-      length = int(self.headers.get("Content-Length", "0"))
-      raw = self.rfile.read(length).decode("utf-8") if length else "{}"
-      payload = json.loads(raw or "{}")
-      routes = {
-        "/api/resume": load_resume,
-        "/api/search": search_jobs,
-        "/api/job": extract_job,
-        "/api/match": build_match,
-        "/api/polish": polish_resume,
+@app.get("/api/skills/vector-status")
+def skill_vector_status() -> dict[str, Any]:
+  return ok({
+    "vector_status": vector_store_status(),
+  })
+
+
+@app.post("/api/skills/reindex")
+def reindex_skills() -> dict[str, Any]:
+  try:
+    return ok({
+      "vector_status": rebuild_skill_vector_index(),
+    })
+  except Exception as exc:
+    return fail(f"本地向量索引构建失败：{exc}")
+
+
+@app.post("/api/skills/search")
+def search_skills(payload: SkillSearchPayload) -> dict[str, Any]:
+  limit = max(1, min(int(payload.limit or 50), 100))
+  mode = payload.mode if payload.mode in {"keyword", "vector", "hybrid"} else "hybrid"
+  results = search_skill_library(
+    query=payload.query,
+    category=payload.category,
+    limit=limit,
+    mode=mode,
+  )
+  return ok({
+    "skills": [
+      {
+        **item.card,
+        "score": item.score,
+        "keyword_score": item.keyword_score,
+        "vector_score": item.vector_score,
+        "matched_terms": item.matched_terms,
+        "retrieval_reason": item.retrieval_reason,
       }
-      handler = routes.get(self.path)
-      if not handler:
-        self._send(404, fail("接口不存在。"))
-        return
-      self._send(200, handler(payload))
-    except Exception as exc:
-      self._send(500, fail(str(exc)))
+      for item in results
+    ],
+    "count": len(results),
+    "mode": mode,
+    "vector_status": vector_store_status(),
+    "source": "local_skill_library",
+  })
 
 
 def run(host: str = "127.0.0.1", port: int = 8765) -> None:
-  server = ThreadingHTTPServer((host, port), Handler)
-  print(f"本地 API 已启动：http://{host}:{port}")
-  server.serve_forever()
+  import uvicorn
+
+  uvicorn.run("src.api.server:app", host=host, port=port)
 
 
 if __name__ == "__main__":

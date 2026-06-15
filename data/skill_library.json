@@ -1,0 +1,405 @@
+[
+  {
+    "id": "prompt_engineering",
+    "name": "Prompt Engineering",
+    "category": "大模型应用开发",
+    "aliases": ["Prompt", "提示词", "提示词工程", "提示词优化", "多轮提示", "系统提示词"],
+    "jd_phrases": ["负责大模型提示词优化", "设计 Prompt 模板", "优化模型输出效果", "构建提示词策略", "改进大模型问答效果"],
+    "definition": "围绕任务目标设计、约束和迭代提示词，让大模型输出更稳定、可控、可评估。",
+    "resume_evidence_patterns": ["Prompt", "提示词", "提示词优化", "输出格式", "模型输出", "问答效果", "提示模板"],
+    "project_suggestions": ["为 JD 分析流程沉淀可复用提示词模板", "加入输出格式校验和失败重试策略"],
+    "interview_questions": [
+      {"question": "Prompt Engineering 主要解决什么问题？", "level": "基础", "answer_points": ["明确任务目标", "约束输出格式", "减少不稳定输出"]},
+      {"question": "如何让大模型稳定输出 JSON？", "level": "基础", "answer_points": ["明确 schema", "给出示例", "增加解析失败兜底"]},
+      {"question": "系统提示词和用户提示词分别适合放什么？", "level": "基础", "answer_points": ["系统提示放角色和边界", "用户提示放具体任务", "避免冲突指令"]},
+      {"question": "如何评估一个 Prompt 是否有效？", "level": "进阶", "answer_points": ["准备样例集", "统计格式成功率", "比较人工评分或规则指标"]},
+      {"question": "Prompt 优化和微调有什么区别？", "level": "进阶", "answer_points": ["Prompt 不改模型参数", "微调改变模型行为", "成本和适用场景不同"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "OpenAI Prompt Engineering Guide", "url": "https://platform.openai.com/docs/guides/prompt-engineering"}
+    ]
+  },
+  {
+    "id": "structured_output",
+    "name": "JSON 结构化输出",
+    "category": "大模型应用开发",
+    "aliases": ["JSON", "结构化输出", "Structured Output", "schema", "Pydantic", "输出解析"],
+    "jd_phrases": ["要求模型输出结构化结果", "熟悉 JSON 输出解析", "设计结构化数据格式", "处理模型输出解析失败", "构建稳定输出链路"],
+    "definition": "将模型输出约束为明确字段，方便后续程序解析、校验和展示。",
+    "resume_evidence_patterns": ["JSON", "schema", "结构化", "Pydantic", "解析", "字段", "校验"],
+    "project_suggestions": ["为 JD 抽取结果设计字段 schema", "增加模型输出解析失败后的规则兜底"],
+    "interview_questions": [
+      {"question": "为什么大模型应用常需要结构化输出？", "level": "基础", "answer_points": ["方便程序消费", "降低前端展示复杂度", "便于校验和重试"]},
+      {"question": "JSON 输出失败时怎么兜底？", "level": "基础", "answer_points": ["正则清洗", "重新请求", "规则解析备用"]},
+      {"question": "schema 设计时要注意什么？", "level": "基础", "answer_points": ["字段含义清楚", "类型稳定", "保留可选字段"]},
+      {"question": "Pydantic 在 API 中有什么作用？", "level": "进阶", "answer_points": ["请求校验", "类型转换", "错误提示清晰"]},
+      {"question": "结构化输出和 Function Calling 有什么关系？", "level": "进阶", "answer_points": ["都依赖 schema", "Function Calling 更偏工具调用", "结构化输出更偏结果格式"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "OpenAI Structured Outputs", "url": "https://platform.openai.com/docs/guides/structured-outputs"}
+    ]
+  },
+  {
+    "id": "tool_calling",
+    "name": "Tool / Function Calling",
+    "category": "Agent 工程",
+    "aliases": ["Tool Calling", "Function Calling", "工具调用", "函数调用", "tools", "tool schema"],
+    "jd_phrases": ["熟悉 Function Calling", "实现工具调用", "接入外部 API 工具", "设计工具 schema", "构建 Agent 工具链"],
+    "definition": "让模型根据任务选择外部工具，并按照 schema 生成可执行参数，从而连接搜索、数据库、文件等系统能力。",
+    "resume_evidence_patterns": ["Function Calling", "Tool Calling", "工具调用", "工具链", "schema", "外部 API", "调用工具"],
+    "project_suggestions": ["把岗位搜索、JD 提取、简历匹配封装成可调用工具", "为工具参数增加 schema 校验和异常提示"],
+    "interview_questions": [
+      {"question": "Tool Calling 解决了普通 LLM 调用的什么问题？", "level": "基础", "answer_points": ["连接外部系统", "执行实时查询", "让模型输出工具参数"]},
+      {"question": "tool schema 为什么重要？", "level": "基础", "answer_points": ["约束参数", "减少无效调用", "方便后端校验"]},
+      {"question": "模型调用工具后，Observation 有什么作用？", "level": "基础", "answer_points": ["反馈工具结果", "让模型继续推理", "形成闭环"]},
+      {"question": "如何避免工具被乱调用？", "level": "进阶", "answer_points": ["权限控制", "参数校验", "调用次数限制"]},
+      {"question": "Function Calling 和普通 JSON 输出有什么区别？", "level": "进阶", "answer_points": ["Function Calling 面向动作", "JSON 输出面向结果", "二者都需要结构约束"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "OpenAI Function Calling", "url": "https://developers.openai.com/api/docs/guides/function-calling"}
+    ]
+  },
+  {
+    "id": "react_agent",
+    "name": "ReAct Agent",
+    "category": "Agent 工程",
+    "aliases": ["ReAct", "Thought Action Observation", "思考-行动-观察", "Agent 循环", "工具推理"],
+    "jd_phrases": ["熟悉 ReAct Agent", "构建多步推理 Agent", "实现工具调用闭环", "具备 Agent 开发经验", "了解 Thought Action Observation"],
+    "definition": "ReAct 通过 Thought、Action、Observation 循环，让模型在推理过程中决定是否调用工具并根据结果继续行动。",
+    "resume_evidence_patterns": ["ReAct", "Thought", "Action", "Observation", "Agent", "多步", "工具调用"],
+    "project_suggestions": ["将搜索、读取简历、匹配分析封装成 ReAct 工具原型", "记录每一步工具调用和观察结果，方便调试"],
+    "interview_questions": [
+      {"question": "Agent 和普通 LLM 调用有什么区别？", "level": "基础", "answer_points": ["普通调用一次返回", "Agent 可多步行动", "Agent 可调用工具"]},
+      {"question": "ReAct 中 Thought、Action、Observation 分别是什么？", "level": "基础", "answer_points": ["Thought 是推理", "Action 是工具调用", "Observation 是工具反馈"]},
+      {"question": "ReAct Agent 容易出现什么问题？", "level": "进阶", "answer_points": ["循环过长", "工具误用", "幻觉调用"]},
+      {"question": "如何限制 Agent 失控？", "level": "进阶", "answer_points": ["最大步数", "工具白名单", "参数校验", "人工确认"]},
+      {"question": "什么时候不适合用 Agent？", "level": "进阶", "answer_points": ["流程固定", "延迟敏感", "确定性要求高"]}
+    ],
+    "source_refs": [
+      {"type": "paper", "title": "ReAct: Synergizing Reasoning and Acting in Language Models", "url": "https://arxiv.org/abs/2210.03629"}
+    ]
+  },
+  {
+    "id": "plan_execute",
+    "name": "Plan-and-Execute",
+    "category": "Agent 工程",
+    "aliases": ["Plan and Execute", "计划执行", "任务规划", "Planner", "Executor", "多步计划"],
+    "jd_phrases": ["具备复杂任务规划能力", "实现 Agent 任务拆解", "设计规划执行流程", "支持多步骤任务处理", "了解 Plan-and-Execute"],
+    "definition": "先由 Planner 拆解任务，再由 Executor 按步骤执行，适合长任务和多工具场景。",
+    "resume_evidence_patterns": ["规划", "拆解", "计划", "执行", "多步骤", "workflow", "任务编排"],
+    "project_suggestions": ["把求职流程拆成搜索、解析、匹配、建议四个可观测步骤", "为每一步增加失败兜底和状态记录"],
+    "interview_questions": [
+      {"question": "Plan-and-Execute 和 ReAct 有什么区别？", "level": "基础", "answer_points": ["Plan 先整体规划", "ReAct 边想边做", "适合场景不同"]},
+      {"question": "计划执行模式有什么风险？", "level": "进阶", "answer_points": ["初始计划错误", "执行中环境变化", "缺少动态修正"]},
+      {"question": "什么时候适合先规划再执行？", "level": "基础", "answer_points": ["任务较长", "步骤明确", "需要可观测流程"]},
+      {"question": "如何让计划可以被修正？", "level": "进阶", "answer_points": ["执行后检查", "失败重规划", "人工确认"]},
+      {"question": "Planner 和 Executor 可以用不同模型吗？", "level": "进阶", "answer_points": ["可以", "Planner 可用强模型", "Executor 可用便宜模型"]}
+    ],
+    "source_refs": [
+      {"type": "learning_note", "title": "Agent planning pattern notes", "url": "local://learning-notes/agent-planning"}
+    ]
+  },
+  {
+    "id": "workflow_agent",
+    "name": "Workflow + Agent 混合",
+    "category": "Agent 工程",
+    "aliases": ["Workflow", "工作流", "Agent Workflow", "固定流程", "混合架构", "可控 Agent"],
+    "jd_phrases": ["设计 AI 应用工作流", "构建可控 Agent 流程", "实现多模块编排", "了解 Workflow 与 Agent 结合", "具备 AI 系统工程化经验"],
+    "definition": "固定业务流程负责稳定性，Agent 负责不确定任务，两者结合能平衡可控性和灵活性。",
+    "resume_evidence_patterns": ["workflow", "工作流", "编排", "流程", "模块", "FastAPI", "Vue", "服务"],
+    "project_suggestions": ["将 JD 项目明确拆分为搜索、解析、RAG 检索、匹配、建议等 workflow 阶段", "只在需要开放推理的地方引入 Agent"],
+    "interview_questions": [
+      {"question": "Workflow 和 Agent 的区别是什么？", "level": "基础", "answer_points": ["Workflow 流程固定", "Agent 决策更灵活", "稳定性不同"]},
+      {"question": "为什么业务系统常用 Workflow + Agent 混合？", "level": "基础", "answer_points": ["核心流程可控", "复杂环节灵活", "便于调试"]},
+      {"question": "你的 JD 项目更像 Workflow 还是 Agent？", "level": "项目追问", "answer_points": ["主流程是 Workflow", "可扩展 Agent 工具调用", "RAG 是增强层"]},
+      {"question": "混合架构如何做异常处理？", "level": "进阶", "answer_points": ["每个节点兜底", "状态记录", "人工确认高风险动作"]},
+      {"question": "如何评估 Workflow + Agent 的效果？", "level": "进阶", "answer_points": ["成功率", "耗时", "错误率", "人工复核质量"]}
+    ],
+    "source_refs": [
+      {"type": "learning_note", "title": "Workflow + ReAct hybrid notes", "url": "local://learning-notes/workflow-agent"}
+    ]
+  },
+  {
+    "id": "rag",
+    "name": "RAG 检索增强生成",
+    "category": "大模型应用开发",
+    "aliases": ["RAG", "知识库问答", "检索增强", "Retrieval Augmented Generation", "召回", "重排", "文档检索"],
+    "jd_phrases": ["构建知识库问答系统", "负责 RAG 应用开发", "优化检索召回效果", "基于企业知识库进行问答", "实现检索增强生成"],
+    "definition": "在生成前检索外部知识，为模型提供上下文，提升回答的可追溯性、可更新性和领域相关性。",
+    "resume_evidence_patterns": ["RAG", "知识库", "检索", "召回", "重排", "文档切分", "Embedding", "向量", "知识库问答"],
+    "project_suggestions": ["为当前 JD 项目加入岗位技能知识库和技能缺口分析", "记录命中的技能卡片和来源链接，提升可解释性"],
+    "interview_questions": [
+      {"question": "RAG 为什么能减少幻觉？", "level": "基础", "answer_points": ["检索外部知识", "生成时基于上下文", "回答可追溯"]},
+      {"question": "RAG 的基本流程是什么？", "level": "基础", "answer_points": ["切分文档", "建立索引", "检索相关内容", "结合上下文生成"]},
+      {"question": "召回和重排分别解决什么问题？", "level": "进阶", "answer_points": ["召回快速找候选", "重排提升相关性排序", "二者平衡速度和质量"]},
+      {"question": "chunk size 过大或过小有什么影响？", "level": "进阶", "answer_points": ["过大噪声多", "过小上下文不足", "需要按任务调参"]},
+      {"question": "你这个项目的第一版 RAG 为什么不用向量库？", "level": "项目追问", "answer_points": ["技能卡片结构化", "关键词和别名足够可解释", "先保证业务闭环"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "LangChain Retrieval", "url": "https://docs.langchain.com/oss/python/langchain/retrieval"}
+    ]
+  },
+  {
+    "id": "embedding_vector_search",
+    "name": "Embedding / 向量检索",
+    "category": "RAG 基础",
+    "aliases": ["Embedding", "向量检索", "语义检索", "Vector Search", "Vector Store", "向量库", "相似度搜索"],
+    "jd_phrases": ["熟悉 Embedding", "了解向量检索", "构建语义检索系统", "使用向量数据库", "优化检索相关性"],
+    "definition": "将文本映射为向量，用相似度搜索寻找语义相关内容，是很多 RAG 系统的基础组件。",
+    "resume_evidence_patterns": ["Embedding", "向量", "相似度", "语义检索", "向量库", "检索", "召回"],
+    "project_suggestions": ["先用结构化检索跑通技能库，后续可升级为 embedding 语义检索", "为命中结果保留 score 和命中短语"],
+    "interview_questions": [
+      {"question": "Embedding 在 RAG 中起什么作用？", "level": "基础", "answer_points": ["表示语义", "支持相似度搜索", "连接 query 和文档"]},
+      {"question": "向量检索和关键词检索有什么区别？", "level": "基础", "answer_points": ["关键词看字面", "向量看语义", "实际可混合"]},
+      {"question": "为什么向量检索也可能召回错误？", "level": "进阶", "answer_points": ["语义相近不等于答案正确", "语料噪声", "query 表达不清"]},
+      {"question": "什么情况下关键词检索反而更合适？", "level": "进阶", "answer_points": ["术语精确", "字段结构化", "需要可解释命中"]},
+      {"question": "向量库是不是 RAG 必需？", "level": "项目追问", "answer_points": ["不是", "RAG 核心是检索外部知识", "结构化数据可先用规则检索"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "LangChain Retrieval Building Blocks", "url": "https://docs.langchain.com/oss/python/langchain/retrieval"}
+    ]
+  },
+  {
+    "id": "langchain",
+    "name": "LangChain",
+    "category": "大模型应用框架",
+    "aliases": ["LangChain", "LCEL", "Chain", "Agent framework", "LangChain Agents", "retriever"],
+    "jd_phrases": ["熟悉 LangChain", "使用 LangChain 构建大模型应用", "了解 Chain 和 Agent", "使用 LangChain 接入工具", "构建检索增强应用"],
+    "definition": "LangChain 提供模型、工具、Agent、检索等组件，帮助开发者集成大模型应用能力。",
+    "resume_evidence_patterns": ["LangChain", "Chain", "Agent", "retriever", "tool", "LCEL"],
+    "project_suggestions": ["当前项目可先保留手写 workflow，后续在需要标准组件时引入 LangChain", "梳理哪些模块可抽象成 Chain 或 Tool"],
+    "interview_questions": [
+      {"question": "LangChain 主要解决什么问题？", "level": "基础", "answer_points": ["集成模型", "组织工具", "构建 Chain/Agent", "接入检索"]},
+      {"question": "Chain 和 Agent 有什么区别？", "level": "基础", "answer_points": ["Chain 流程固定", "Agent 可决策工具", "复杂度不同"]},
+      {"question": "什么场景不一定需要 LangChain？", "level": "进阶", "answer_points": ["流程简单", "依赖少", "手写更可控"]},
+      {"question": "LangChain 和 LangGraph 的关系是什么？", "level": "进阶", "answer_points": ["LangChain 偏组件和 Agent", "LangGraph 偏状态编排", "可组合使用"]},
+      {"question": "你的项目为什么第一版不用 LangChain？", "level": "项目追问", "answer_points": ["业务流程清晰", "先保证可解释", "避免为框架而框架"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "LangChain Overview", "url": "https://docs.langchain.com/oss/python/langchain/overview"}
+    ]
+  },
+  {
+    "id": "langgraph",
+    "name": "LangGraph",
+    "category": "Agent 编排框架",
+    "aliases": ["LangGraph", "StateGraph", "State", "Node", "Edge", "状态图", "图编排"],
+    "jd_phrases": ["熟悉 LangGraph", "使用 StateGraph 编排 Agent", "了解 Node Edge State", "构建状态化 Agent 工作流", "实现复杂 Agent 流程编排"],
+    "definition": "LangGraph 是面向长流程、状态化 Agent 的低层编排框架，适合持久化、可中断、可观测的 Agent 工作流。",
+    "resume_evidence_patterns": ["LangGraph", "StateGraph", "State", "Node", "Edge", "状态", "节点", "工作流"],
+    "project_suggestions": ["后续可将 JD 项目的搜索、解析、RAG、匹配、建议拆成 LangGraph 节点", "先把当前 workflow 边界整理清楚，再迁移框架"],
+    "interview_questions": [
+      {"question": "LangGraph 的 State、Node、Edge 分别是什么？", "level": "基础", "answer_points": ["State 保存流程数据", "Node 执行业务逻辑", "Edge 决定流转"]},
+      {"question": "LangGraph 和普通 Chain 的区别是什么？", "level": "基础", "answer_points": ["支持状态图", "适合复杂分支", "更利于长流程"]},
+      {"question": "什么场景适合用 LangGraph？", "level": "进阶", "answer_points": ["多步骤 Agent", "需要持久化", "需要人工介入"]},
+      {"question": "你的项目后续如何迁移 LangGraph？", "level": "项目追问", "answer_points": ["先拆节点", "定义共享 state", "逐步替换 workflow"]},
+      {"question": "为什么现在先不引入 LangGraph？", "level": "项目追问", "answer_points": ["先做业务价值", "RAG 层更急", "避免过早重构"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "LangGraph Overview", "url": "https://docs.langchain.com/oss/python/langgraph/overview"}
+    ]
+  },
+  {
+    "id": "mcp",
+    "name": "MCP / Model Context Protocol",
+    "category": "Agent 工具生态",
+    "aliases": ["MCP", "Model Context Protocol", "上下文协议", "工具协议", "MCP Server", "MCP Client"],
+    "jd_phrases": ["了解 MCP", "接入 MCP 工具", "构建工具协议服务", "实现模型与外部系统连接", "熟悉 Agent 工具生态"],
+    "definition": "MCP 是连接模型应用与外部工具、数据源的协议思路，用于标准化工具和上下文接入。",
+    "resume_evidence_patterns": ["MCP", "FastMCP", "工具协议", "server", "client", "外部工具", "上下文"],
+    "project_suggestions": ["后续可把简历读取、岗位搜索、技能库检索封装为 MCP 工具", "为工具调用增加权限和输入边界"],
+    "interview_questions": [
+      {"question": "MCP 想解决什么问题？", "level": "基础", "answer_points": ["标准化工具接入", "连接数据源", "降低集成成本"]},
+      {"question": "MCP Server 和普通 API 有什么区别？", "level": "进阶", "answer_points": ["面向模型工具调用", "有工具描述", "可统一发现和调用"]},
+      {"question": "MCP 和 Function Calling 有什么关系？", "level": "进阶", "answer_points": ["Function Calling 是模型调用形式", "MCP 可提供工具协议", "可结合使用"]},
+      {"question": "接入 MCP 时要注意什么安全问题？", "level": "进阶", "answer_points": ["权限边界", "文件访问限制", "审计日志"]},
+      {"question": "你的项目哪些能力适合封装成 MCP 工具？", "level": "项目追问", "answer_points": ["岗位搜索", "简历读取", "技能库检索", "报告生成"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "Model Context Protocol", "url": "https://modelcontextprotocol.io/"}
+    ]
+  },
+  {
+    "id": "fastapi",
+    "name": "FastAPI",
+    "category": "后端工程",
+    "aliases": ["FastAPI", "API", "接口", "Pydantic", "OpenAPI", "uvicorn", "后端服务"],
+    "jd_phrases": ["熟悉 FastAPI", "负责 Python 后端接口开发", "开发 REST API", "使用 Pydantic 做数据校验", "构建后端服务"],
+    "definition": "FastAPI 是 Python API 框架，支持类型标注、请求校验、OpenAPI 文档和异步服务能力。",
+    "resume_evidence_patterns": ["FastAPI", "API", "Pydantic", "uvicorn", "接口", "后端", "OpenAPI", "服务"],
+    "project_suggestions": ["强调本项目已从手写 HTTPServer 迁移到 FastAPI", "补充接口 schema、错误处理和 /docs 调试说明"],
+    "interview_questions": [
+      {"question": "FastAPI 相比手写 HTTPServer 有什么优势？", "level": "基础", "answer_points": ["路由清晰", "请求校验", "自动文档", "更易扩展"]},
+      {"question": "Pydantic 在 FastAPI 中有什么作用？", "level": "基础", "answer_points": ["请求体验证", "类型转换", "错误提示"]},
+      {"question": "uvicorn 是什么？", "level": "基础", "answer_points": ["ASGI 服务器", "负责运行 FastAPI app", "处理 HTTP 请求"]},
+      {"question": "FastAPI 的 /docs 有什么价值？", "level": "基础", "answer_points": ["自动接口文档", "方便调试", "基于 OpenAPI"]},
+      {"question": "你的项目为什么迁移到 FastAPI？", "level": "项目追问", "answer_points": ["接口规范化", "便于接 RAG", "减少手写分发逻辑"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "FastAPI Documentation", "url": "https://fastapi.tiangolo.com/"}
+    ]
+  },
+  {
+    "id": "vue",
+    "name": "Vue 前端",
+    "category": "前端工程",
+    "aliases": ["Vue", "Vue3", "前端", "组件", "响应式", "页面交互", "Web UI"],
+    "jd_phrases": ["熟悉 Vue", "开发前端交互页面", "实现 Web 管理后台", "对接后端 API", "构建数据展示页面"],
+    "definition": "Vue 用于构建交互式前端界面，适合将搜索、报告、表格和分析结果组织成可用页面。",
+    "resume_evidence_patterns": ["Vue", "前端", "页面", "交互", "组件", "API_BASE", "fetch", "展示"],
+    "project_suggestions": ["在匹配页新增岗位技能知识库分析区", "将技能缺口、证据和面试题做成清晰模块"],
+    "interview_questions": [
+      {"question": "你的项目中 Vue 负责什么？", "level": "项目追问", "answer_points": ["前端交互", "调用 FastAPI", "展示岗位和报告"]},
+      {"question": "Vue 前端如何和后端通信？", "level": "基础", "answer_points": ["fetch 请求", "JSON 数据", "API_BASE 配置"]},
+      {"question": "前端展示 RAG 结果时要注意什么？", "level": "进阶", "answer_points": ["信息分层", "避免过长", "显示证据和来源"]},
+      {"question": "为什么不用 Streamlit 继续做前端？", "level": "项目追问", "answer_points": ["Vue 更像正式 Web 应用", "前后端分层清晰", "更适合开源演示"]},
+      {"question": "如何处理加载和错误状态？", "level": "基础", "answer_points": ["loading 状态", "错误提示", "空结果兜底"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "Vue Documentation", "url": "https://vuejs.org/guide/introduction.html"}
+    ]
+  },
+  {
+    "id": "docker_linux",
+    "name": "Docker / Linux",
+    "category": "工程部署",
+    "aliases": ["Docker", "Linux", "容器", "镜像", "部署", "Shell", "环境配置"],
+    "jd_phrases": ["熟悉 Linux 环境", "了解 Docker 部署", "具备容器化经验", "能编写 Shell 脚本", "负责服务部署和排障"],
+    "definition": "Docker 和 Linux 是 AI 应用部署、环境隔离、脚本自动化和问题排查的重要工程基础。",
+    "resume_evidence_patterns": ["Docker", "Linux", "Shell", "部署", "容器", "镜像", "环境", "脚本", "排查"],
+    "project_suggestions": ["为项目补充 Dockerfile 或部署说明", "增加环境变量配置和启动脚本说明"],
+    "interview_questions": [
+      {"question": "Docker 解决了什么问题？", "level": "基础", "answer_points": ["环境一致", "依赖隔离", "部署方便"]},
+      {"question": "镜像和容器有什么区别？", "level": "基础", "answer_points": ["镜像是模板", "容器是运行实例", "容器基于镜像启动"]},
+      {"question": "Linux 下排查端口占用怎么做？", "level": "基础", "answer_points": ["查看进程", "检查端口", "停止冲突服务"]},
+      {"question": "为什么开源项目要写 .env.example？", "level": "项目追问", "answer_points": ["保护真实密钥", "说明配置项", "降低上手成本"]},
+      {"question": "AI 应用部署时要注意什么？", "level": "进阶", "answer_points": ["密钥安全", "依赖版本", "日志和资源占用"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "Docker Documentation", "url": "https://docs.docker.com/"}
+    ]
+  },
+  {
+    "id": "vllm",
+    "name": "vLLM",
+    "category": "模型部署",
+    "aliases": ["vLLM", "模型推理", "推理服务", "PagedAttention", "高吞吐", "LLM Serving"],
+    "jd_phrases": ["熟悉 vLLM", "部署大模型推理服务", "优化模型推理吞吐", "构建 LLM Serving 服务", "了解推理加速框架"],
+    "definition": "vLLM 是高吞吐大模型推理服务框架，常用于部署 OpenAI Compatible 的本地或私有模型接口。",
+    "resume_evidence_patterns": ["vLLM", "推理", "部署", "Serving", "OpenAI Compatible", "吞吐", "模型服务"],
+    "project_suggestions": ["在简历中描述使用 vLLM/SGLang/LMDeploy/Ollama 调研或部署模型的具体任务", "补充模型服务接口调用和效果验证"],
+    "interview_questions": [
+      {"question": "vLLM 主要用于什么场景？", "level": "基础", "answer_points": ["大模型推理服务", "提高吞吐", "提供 API 调用"]},
+      {"question": "OpenAI Compatible API 有什么价值？", "level": "基础", "answer_points": ["统一调用格式", "方便替换模型", "降低业务代码改动"]},
+      {"question": "推理服务需要关注哪些指标？", "level": "进阶", "answer_points": ["吞吐", "延迟", "显存", "并发"]},
+      {"question": "vLLM 和 Ollama 的使用定位有什么不同？", "level": "进阶", "answer_points": ["vLLM 偏服务吞吐", "Ollama 偏本地易用", "部署复杂度不同"]},
+      {"question": "你实习中模型部署做了什么？", "level": "项目追问", "answer_points": ["调研框架", "部署开源模型", "验证接口和效果"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "vLLM Documentation", "url": "https://docs.vllm.ai/"}
+    ]
+  },
+  {
+    "id": "ollama",
+    "name": "Ollama",
+    "category": "模型部署",
+    "aliases": ["Ollama", "本地模型", "本地推理", "模型运行", "llama", "本地部署"],
+    "jd_phrases": ["了解 Ollama", "能本地运行开源大模型", "部署本地模型服务", "调试本地 LLM", "熟悉开源模型使用"],
+    "definition": "Ollama 用于快速在本地运行和管理开源大模型，适合开发调试和轻量实验。",
+    "resume_evidence_patterns": ["Ollama", "本地模型", "本地推理", "开源模型", "运行模型", "模型部署"],
+    "project_suggestions": ["为项目保留 OpenAI Compatible 配置，方便接入本地模型服务", "记录不同模型在润色任务上的表现差异"],
+    "interview_questions": [
+      {"question": "Ollama 适合什么场景？", "level": "基础", "answer_points": ["本地调试", "快速运行开源模型", "低门槛实验"]},
+      {"question": "本地模型和云 API 有什么区别？", "level": "基础", "answer_points": ["成本和隐私不同", "性能受硬件影响", "维护复杂度不同"]},
+      {"question": "为什么项目保留 OPENAI_BASE_URL？", "level": "项目追问", "answer_points": ["支持兼容接口", "可切换 DeepSeek/本地服务", "提高灵活性"]},
+      {"question": "本地模型效果不好怎么处理？", "level": "进阶", "answer_points": ["换模型", "优化 prompt", "降低任务难度", "加规则兜底"]},
+      {"question": "Ollama 和 vLLM 如何选择？", "level": "进阶", "answer_points": ["Ollama 易用", "vLLM 吞吐强", "看开发或服务场景"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "Ollama Documentation", "url": "https://github.com/ollama/ollama"}
+    ]
+  },
+  {
+    "id": "sglang_lmdeploy",
+    "name": "SGLang / LMDeploy",
+    "category": "模型部署",
+    "aliases": ["SGLang", "LMDeploy", "推理框架", "模型部署", "高性能推理", "Serving"],
+    "jd_phrases": ["了解 SGLang", "熟悉 LMDeploy", "对比模型推理框架", "部署开源大模型服务", "优化 LLM 推理性能"],
+    "definition": "SGLang 和 LMDeploy 都是大模型推理/部署相关工具，常用于服务化、加速和工程评估。",
+    "resume_evidence_patterns": ["SGLang", "LMDeploy", "推理框架", "部署", "模型服务", "调研", "评估"],
+    "project_suggestions": ["把实习中的部署框架调研写成对比表：适用场景、部署难度、接口兼容、资源占用", "补充验证方法而不是只列工具名"],
+    "interview_questions": [
+      {"question": "为什么要对比多个推理框架？", "level": "基础", "answer_points": ["场景不同", "性能不同", "部署复杂度不同"]},
+      {"question": "评估推理框架看哪些指标？", "level": "进阶", "answer_points": ["延迟", "吞吐", "显存", "接口兼容", "稳定性"]},
+      {"question": "LMDeploy 常用于什么？", "level": "基础", "answer_points": ["模型部署", "推理加速", "服务化"]},
+      {"question": "SGLang 的定位是什么？", "level": "基础", "answer_points": ["LLM 推理和服务框架", "面向复杂生成流程", "支持服务化"]},
+      {"question": "简历里写这些工具如何避免空泛？", "level": "项目追问", "answer_points": ["写具体模型", "写部署方式", "写验证指标"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "SGLang Documentation", "url": "https://docs.sglang.ai/"},
+      {"type": "official_doc", "title": "LMDeploy Documentation", "url": "https://lmdeploy.readthedocs.io/"}
+    ]
+  },
+  {
+    "id": "lora_qlora",
+    "name": "LoRA / QLoRA",
+    "category": "模型微调",
+    "aliases": ["LoRA", "QLoRA", "微调", "低秩适配", "参数高效微调", "PEFT", "LLaMA-Factory"],
+    "jd_phrases": ["了解 LoRA 微调", "熟悉 QLoRA", "使用 LLaMA-Factory 微调模型", "掌握参数高效微调", "参与大模型微调"],
+    "definition": "LoRA/QLoRA 是参数高效微调方法，通过较低训练成本适配下游任务。",
+    "resume_evidence_patterns": ["LoRA", "QLoRA", "微调", "LLaMA-Factory", "PEFT", "训练", "数据集", "适配"],
+    "project_suggestions": ["如果没有真实微调实验，不要写熟练掌握；可写学习和实验计划", "补一个小规模指令微调实验并记录数据、参数、效果"],
+    "interview_questions": [
+      {"question": "LoRA 的核心思想是什么？", "level": "基础", "answer_points": ["冻结原模型", "训练低秩增量矩阵", "降低训练成本"]},
+      {"question": "QLoRA 相比 LoRA 多了什么？", "level": "基础", "answer_points": ["量化基础模型", "进一步降低显存", "适合资源有限场景"]},
+      {"question": "微调和 RAG 如何选择？", "level": "进阶", "answer_points": ["RAG 适合知识更新", "微调适合行为风格", "可组合使用"]},
+      {"question": "微调数据质量为什么重要？", "level": "进阶", "answer_points": ["影响模型行为", "噪声会放大", "需要清洗和评估"]},
+      {"question": "没有做过微调能不能写在简历？", "level": "项目追问", "answer_points": ["不要夸大", "可写了解或实验", "最好补真实项目"]}
+    ],
+    "source_refs": [
+      {"type": "paper", "title": "LoRA: Low-Rank Adaptation of Large Language Models", "url": "https://arxiv.org/abs/2106.09685"},
+      {"type": "paper", "title": "QLoRA", "url": "https://arxiv.org/abs/2305.14314"}
+    ]
+  },
+  {
+    "id": "qwen_llama",
+    "name": "Qwen / LLaMA",
+    "category": "开源模型",
+    "aliases": ["Qwen", "LLaMA", "Llama", "开源大模型", "通义千问", "模型选型", "LLM"],
+    "jd_phrases": ["熟悉 Qwen", "了解 LLaMA", "使用开源大模型", "评估不同大模型效果", "进行模型选型"],
+    "definition": "Qwen 和 LLaMA 是常见开源大模型家族，常用于本地部署、微调、推理服务和应用集成。",
+    "resume_evidence_patterns": ["Qwen", "LLaMA", "Llama", "开源模型", "模型评估", "模型选型", "LLM"],
+    "project_suggestions": ["记录项目中使用过的模型名称、调用方式、任务效果和局限", "不要只列模型名，要写使用场景"],
+    "interview_questions": [
+      {"question": "开源模型选型要看哪些因素？", "level": "基础", "answer_points": ["任务效果", "上下文长度", "部署成本", "许可证"]},
+      {"question": "Qwen 和 LLaMA 都可以怎么接入应用？", "level": "基础", "answer_points": ["云 API", "本地服务", "OpenAI Compatible 接口"]},
+      {"question": "模型越大一定越好吗？", "level": "进阶", "answer_points": ["不一定", "成本更高", "任务匹配更重要"]},
+      {"question": "如何比较两个模型在简历润色任务上的效果？", "level": "项目追问", "answer_points": ["准备样例", "人工评分", "格式稳定性", "事实一致性"]},
+      {"question": "使用开源模型要注意什么？", "level": "进阶", "answer_points": ["许可证", "资源消耗", "安全和隐私"]}
+    ],
+    "source_refs": [
+      {"type": "official_doc", "title": "Qwen Documentation", "url": "https://qwen.readthedocs.io/"},
+      {"type": "official_doc", "title": "Llama Models", "url": "https://www.llama.com/"}
+    ]
+  },
+  {
+    "id": "model_eval_deploy",
+    "name": "模型评估与部署",
+    "category": "模型工程",
+    "aliases": ["模型评估", "模型部署", "效果评估", "压测", "服务监控", "上线", "推理评估"],
+    "jd_phrases": ["参与模型评估", "负责模型部署", "验证模型效果", "评估开源模型", "优化推理服务稳定性"],
+    "definition": "模型评估与部署关注模型在真实任务中的效果、成本、稳定性和可运维性。",
+    "resume_evidence_patterns": ["评估", "部署", "验证", "压测", "监控", "服务", "效果", "稳定性", "指标"],
+    "project_suggestions": ["为简历 JD 项目加入固定测试 JD 和报告结果对比", "记录搜索、解析、匹配的失败案例和修复策略"],
+    "interview_questions": [
+      {"question": "模型评估和业务评估有什么区别？", "level": "基础", "answer_points": ["模型指标偏通用", "业务指标看任务结果", "需要结合场景"]},
+      {"question": "部署大模型服务需要关注哪些指标？", "level": "基础", "answer_points": ["延迟", "吞吐", "显存", "错误率", "成本"]},
+      {"question": "如何验证简历润色没有编造经历？", "level": "项目追问", "answer_points": ["保留原文约束", "禁止新增事实", "人工复核", "规则检查"]},
+      {"question": "服务上线后如何排查问题？", "level": "进阶", "answer_points": ["日志", "错误码", "请求样例", "资源监控"]},
+      {"question": "为什么 AI 应用需要兜底策略？", "level": "进阶", "answer_points": ["模型不稳定", "接口可能失败", "保证用户体验"]}
+    ],
+    "source_refs": [
+      {"type": "learning_note", "title": "LLM evaluation and deployment notes", "url": "local://learning-notes/model-eval-deploy"}
+    ]
+  }
+]
